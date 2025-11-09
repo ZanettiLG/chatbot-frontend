@@ -100,6 +100,14 @@ class AgentService {
       throw new Error(`Failed to delete agent: ${response.statusText}`);
     }
   }
+
+  async getKnowledgeOwner(documentId: string): Promise<{ agentId: string | null }> {
+    const response = await fetch(`${this.baseUrl}/knowledge/${documentId}/owner`);
+    if (!response.ok) {
+      throw new Error(`Failed to get knowledge owner: ${response.statusText}`);
+    }
+    return response.json();
+  }
 }
 
 export const agentService = new AgentService();

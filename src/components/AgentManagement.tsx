@@ -32,6 +32,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
@@ -46,6 +47,8 @@ import { fetchRoles } from '../store/roleSlice';
 import { fetchPersonalities } from '../store/personalitySlice';
 import { fetchRules } from '../store/ruleSlice';
 import { Agent } from '../store/agentSlice';
+import { documentService, Document } from '../services/documentService';
+import { agentService } from '../services/agentService';
 
 const LANGUAGES = [
   { value: 'pt-BR', label: 'Português (Brasil)' },
@@ -67,6 +70,14 @@ const AgentManagement: React.FC = () => {
   const { roles } = useSelector((state: RootState) => state.role);
   const { personalities } = useSelector((state: RootState) => state.personality);
   const { rules } = useSelector((state: RootState) => state.rule);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documentOwners, setDocumentOwners] = useState<Record<string, string>>({}); // documentId -> agentId
+  const [openDocumentDialog, setOpenDocumentDialog] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [documentFormData, setDocumentFormData] = useState({
+    title: '',
+    content: '',
+  });
   
   const [openDialog, setOpenDialog] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -88,6 +99,9 @@ const AgentManagement: React.FC = () => {
     dispatch(fetchRoles({ activeOnly: true }) as any);
     dispatch(fetchPersonalities({ activeOnly: true }) as any);
     dispatch(fetchRules({ activeOnly: true }) as any);
+    
+    // Carregar documentos
+    documentService.getAll().then(setDocuments).catch(console.error);
   }, [dispatch]);
 
   useEffect(() => {
@@ -99,7 +113,23 @@ const AgentManagement: React.FC = () => {
     }
   }, [error, dispatch]);
 
-  const handleOpenDialog = (agent?: Agent) => {
+  // Carregar donos dos documentos
+  const loadDocumentOwners = async (docs: Document[] = documents) => {
+    const owners: Record<string, string> = {};
+    for (const doc of docs) {
+      try {
+        const result = await agentService.getKnowledgeOwner(doc.id);
+        if (result.agentId) {
+          owners[doc.id] = result.agentId;
+        }
+      } catch (error) {
+        console.error(`Error loading owner for document ${doc.id}:`, error);
+      }
+    }
+    setDocumentOwners(owners);
+  };
+
+  const handleOpenDialog = async (agent?: Agent) => {
     if (agent) {
       setEditingAgent(agent);
       setFormData({
@@ -129,6 +159,8 @@ const AgentManagement: React.FC = () => {
         isActive: true,
       });
     }
+    // Carregar donos dos documentos quando abrir o diálogo
+    await loadDocumentOwners();
     setOpenDialog(true);
   };
 
@@ -142,19 +174,97 @@ const AgentManagement: React.FC = () => {
       return;
     }
 
-    if (editingAgent) {
-      await dispatch(updateAgent({ id: editingAgent.id, data: formData }) as any);
-    } else {
-      await dispatch(createAgent(formData as any) as any);
+    try {
+      if (editingAgent) {
+        await dispatch(updateAgent({ id: editingAgent.id, data: formData }) as any);
+      } else {
+        await dispatch(createAgent(formData as any) as any);
+      }
+      handleCloseDialog();
+      dispatch(fetchAgents() as any);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.toString() || 'Erro ao salvar agente';
+      alert(`Erro ao salvar agente: ${errorMessage}`);
     }
-    handleCloseDialog();
-    dispatch(fetchAgents() as any);
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este agente?')) {
       await dispatch(deleteAgent(id) as any);
       dispatch(fetchAgents() as any);
+    }
+  };
+
+  const handleOpenDocumentDialog = (document?: Document) => {
+    if (document) {
+      setEditingDocument(document);
+      setDocumentFormData({
+        title: document.title,
+        content: document.content,
+      });
+    } else {
+      setEditingDocument(null);
+      setDocumentFormData({
+        title: '',
+        content: '',
+      });
+    }
+    setOpenDocumentDialog(true);
+  };
+
+  const handleCloseDocumentDialog = () => {
+    setOpenDocumentDialog(false);
+    setEditingDocument(null);
+    setDocumentFormData({
+      title: '',
+      content: '',
+    });
+  };
+
+  const handleSaveDocument = async () => {
+    if (!documentFormData.title || !documentFormData.content) {
+      return;
+    }
+
+    try {
+      if (editingDocument) {
+        await documentService.update(editingDocument.id, documentFormData);
+      } else {
+        await documentService.create(documentFormData);
+      }
+      // Recarregar documentos
+      const updatedDocuments = await documentService.getAll();
+      setDocuments(updatedDocuments);
+      // Recarregar donos se o diálogo de agente estiver aberto
+      if (openDialog) {
+        await loadDocumentOwners(updatedDocuments);
+      }
+      handleCloseDocumentDialog();
+    } catch (error) {
+      console.error('Error saving document:', error);
+      alert('Erro ao salvar documento');
+    }
+  };
+
+  const handleDeleteDocument = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este documento?')) {
+      try {
+        await documentService.delete(id);
+        // Remover da lista local
+        setDocuments(documents.filter((d) => d.id !== id));
+        // Remover dos knowledgeIds se estiver selecionado
+        setFormData({
+          ...formData,
+          knowledgeIds: formData.knowledgeIds.filter((docId) => docId !== id),
+        });
+        // Remover dos donos
+        const newOwners = { ...documentOwners };
+        delete newOwners[id];
+        setDocumentOwners(newOwners);
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        alert('Erro ao excluir documento');
+      }
     }
   };
 
@@ -394,6 +504,128 @@ const AgentManagement: React.FC = () => {
 
             <Divider sx={{ my: 1 }} />
 
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Documentos de Conhecimento
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenDocumentDialog()}
+                >
+                  Adicionar Documento
+                </Button>
+              </Box>
+              <FormHelperText sx={{ mb: 2 }}>
+                Selecione os documentos de conhecimento que este agente deve usar para responder perguntas.
+                <br />
+                <strong>Importante:</strong> Cada conhecimento é exclusivo de um agente e não pode ser compartilhado entre agentes.
+              </FormHelperText>
+              
+              {documents.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                  Nenhum documento cadastrado. Clique em "Adicionar Documento" para criar um.
+                </Typography>
+              ) : (() => {
+                // Filtrar documentos: mostrar apenas os disponíveis (não associados) ou já associados ao agente atual
+                const availableDocuments = documents.filter((doc) => {
+                  const ownerAgentId = documentOwners[doc.id];
+                  // Se não tem dono, está disponível
+                  if (!ownerAgentId) return true;
+                  // Se tem dono e é o agente atual, mostrar (para poder remover se necessário)
+                  if (ownerAgentId === editingAgent?.id) return true;
+                  // Se tem dono e é outro agente, não mostrar
+                  return false;
+                });
+
+                if (availableDocuments.length === 0) {
+                  return (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                      Todos os documentos disponíveis já estão associados a outros agentes.
+                      <br />
+                      Crie um novo documento ou remova a associação de outro agente primeiro.
+                    </Typography>
+                  );
+                }
+
+                return (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 300, overflowY: 'auto' }}>
+                    {availableDocuments.map((doc) => {
+                      const ownerAgentId = documentOwners[doc.id];
+                      const isOwnedByCurrentAgent = ownerAgentId === editingAgent?.id;
+                      const isChecked = formData.knowledgeIds.includes(doc.id);
+
+                      return (
+                        <Box
+                          key={doc.id}
+                          sx={{
+                            border: '1px solid #e0e0e0',
+                            borderRadius: 1,
+                            p: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5',
+                            },
+                          }}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  knowledgeIds: [...formData.knowledgeIds, doc.id],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  knowledgeIds: formData.knowledgeIds.filter((id) => id !== doc.id),
+                                });
+                              }
+                            }}
+                          />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="subtitle2" fontWeight="medium" noWrap>
+                              {doc.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              {doc.content.substring(0, 80)}
+                              {doc.content.length > 80 ? '...' : ''}
+                            </Typography>
+                            {isOwnedByCurrentAgent && (
+                              <Typography variant="caption" color="info.main" sx={{ mt: 0.5, display: 'block' }}>
+                                ✓ Já associado a este agente
+                              </Typography>
+                            )}
+                          </Box>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenDocumentDialog(doc)}
+                            sx={{ ml: 'auto' }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                );
+              })()}
+            </Box>
+
+            <Divider sx={{ my: 1 }} />
+
             <TextField
               label="System Prompt (Opcional)"
               fullWidth
@@ -424,6 +656,57 @@ const AgentManagement: React.FC = () => {
             disabled={!formData.name || !formData.roleId || !formData.personalityId}
           >
             {editingAgent ? 'Atualizar' : 'Criar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para criar/editar documento */}
+      <Dialog open={openDocumentDialog} onClose={handleCloseDocumentDialog} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {editingDocument ? 'Editar Documento' : 'Novo Documento'}
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseDocumentDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Título"
+              fullWidth
+              required
+              value={documentFormData.title}
+              onChange={(e) => setDocumentFormData({ ...documentFormData, title: e.target.value })}
+              placeholder="Ex: Cardápio de Sushi"
+            />
+            <TextField
+              label="Conteúdo"
+              fullWidth
+              required
+              multiline
+              rows={10}
+              value={documentFormData.content}
+              onChange={(e) => setDocumentFormData({ ...documentFormData, content: e.target.value })}
+              placeholder="Digite o conteúdo do documento de conhecimento aqui..."
+              helperText="Este conteúdo será usado pelo agente para responder perguntas relacionadas"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDocumentDialog}>Cancelar</Button>
+          <Button
+            onClick={handleSaveDocument}
+            variant="contained"
+            disabled={!documentFormData.title || !documentFormData.content}
+          >
+            {editingDocument ? 'Atualizar' : 'Criar'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Grid,
@@ -11,17 +11,105 @@ import {
   FormControlLabel,
   Alert,
   Divider,
+  Button,
 } from '@mui/material';
 import {
   Wifi as WifiIcon,
   WifiOff as WifiOffIcon,
   Phone as PhoneIcon,
   PhoneDisabled as PhoneDisabledIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
+import { fetchWhatsAppSessions } from '../store/whatsappSessionSlice';
+import { updateEngineStatus } from '../store/engineSlice';
+import { useWhatsAppStatus } from '../hooks/useWhatsAppStatus';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const EngineStatus: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { engines, selectedEngine } = useSelector((state: RootState) => state.engine);
+  const { sessions } = useSelector((state: RootState) => state.whatsappSession);
+  const { isConnected: websocketConnected } = useSelector((state: RootState) => state.chat);
+
+  // Conectar ao WebSocket para receber atualizações de status
+  useWhatsAppStatus();
+  useWebSocket({ autoConnect: true });
+
+  // Carregar sessões e sincronizar status inicial ao montar
+  useEffect(() => {
+    dispatch(fetchWhatsAppSessions() as any);
+  }, [dispatch]);
+
+  // Sincronizar status do WebSocket com base no estado atual da conexão
+  useEffect(() => {
+    dispatch(updateEngineStatus({
+      engine: 'websocket',
+      status: {
+        isConnected: websocketConnected,
+        lastActivity: websocketConnected ? new Date().toISOString() : undefined,
+      },
+    }));
+  }, [websocketConnected, dispatch]);
+
+  // Sincronizar status do WhatsApp com base nas sessões carregadas
+  useEffect(() => {
+    if (sessions.length === 0) {
+      // Se não há sessões, garantir que o status está desconectado
+      dispatch(updateEngineStatus({
+        engine: 'whatsapp',
+        status: {
+          isConnected: false,
+          sessionStatus: 'disconnected',
+        },
+      }));
+      return;
+    }
+
+    // Verificar se há alguma sessão conectada
+    const connectedSession = sessions.find(s => s.status === 'connected');
+    const hasQRCode = sessions.some(s => s.status === 'qr_required');
+    const isConnecting = sessions.some(s => s.status === 'connecting');
+
+    if (connectedSession) {
+      // Se há pelo menos uma sessão conectada, marcar como conectado
+      dispatch(updateEngineStatus({
+        engine: 'whatsapp',
+        status: {
+          isConnected: true,
+          sessionStatus: 'connected',
+          lastActivity: connectedSession.updatedAt,
+        },
+      }));
+    } else if (hasQRCode) {
+      dispatch(updateEngineStatus({
+        engine: 'whatsapp',
+        status: {
+          isConnected: false,
+          sessionStatus: 'qr_required',
+        },
+      }));
+    } else if (isConnecting) {
+      dispatch(updateEngineStatus({
+        engine: 'whatsapp',
+        status: {
+          isConnected: false,
+          sessionStatus: 'connecting',
+        },
+      }));
+    } else {
+      // Todas as sessões estão desconectadas
+      dispatch(updateEngineStatus({
+        engine: 'whatsapp',
+        status: {
+          isConnected: false,
+          sessionStatus: 'disconnected',
+        },
+      }));
+    }
+  }, [sessions, dispatch]);
 
   const getConnectionIcon = (isConnected: boolean, engineType: string) => {
     if (engineType === 'websocket') {
@@ -181,6 +269,29 @@ const EngineStatus: React.FC = () => {
                 }
                 label="Engine Habilitada"
               />
+
+              <Divider sx={{ my: 2 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Sessões: <strong>{sessions.length}</strong>
+                  </Typography>
+                  {sessions.length > 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      Conectadas: <strong>{sessions.filter(s => s.status === 'connected').length}</strong>
+                    </Typography>
+                  )}
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => navigate('/whatsapp-sessions')}
+                >
+                  Gerenciar Sessões
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

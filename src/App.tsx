@@ -12,6 +12,7 @@ import AgentManagement from './components/AgentManagement';
 import RoleManagement from './components/RoleManagement';
 import PersonalityManagement from './components/PersonalityManagement';
 import RuleManagement from './components/RuleManagement';
+import WhatsAppSessionManagement from './components/WhatsAppSessionManagement';
 
 const App: React.FC = () => {
   console.log('App component rendering');
@@ -42,6 +43,7 @@ const App: React.FC = () => {
             <Route path="/roles" element={<RoleManagement />} />
             <Route path="/personalities" element={<PersonalityManagement />} />
             <Route path="/rules" element={<RuleManagement />} />
+            <Route path="/whatsapp-sessions" element={<WhatsAppSessionManagement />} />
           </Routes>
         </Container>
       </ThemeProvider>

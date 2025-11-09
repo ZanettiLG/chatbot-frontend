@@ -6,6 +6,7 @@ import agentSlice from './agentSlice';
 import roleSlice from './roleSlice';
 import personalitySlice from './personalitySlice';
 import ruleSlice from './ruleSlice';
+import whatsappSessionSlice from './whatsappSessionSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     role: roleSlice,
     personality: personalitySlice,
     rule: ruleSlice,
+    whatsappSession: whatsappSessionSlice,
   },
 });
 

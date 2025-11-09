@@ -9,7 +9,6 @@ import {
   Chip,
   List,
   ListItem,
-  ListItemText,
   Avatar,
   Divider,
   IconButton,
@@ -32,6 +31,7 @@ import { MessageProtocol } from '../engines/types';
 import { selectAgent, fetchAgents } from '../store/agentSlice';
 import { fetchRoles } from '../store/roleSlice';
 import { fetchPersonalities } from '../store/personalitySlice';
+import MarkdownMessage from './MarkdownMessage';
 
 const ChatInterface: React.FC = () => {
   const dispatch = useDispatch();
@@ -264,15 +264,9 @@ const ChatInterface: React.FC = () => {
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </Typography>
                 </Box>
-                <ListItemText
-                  primary={message.content}
-                  sx={{
-                    '& .MuiListItemText-primary': {
-                      wordBreak: 'break-word',
-                      whiteSpace: 'pre-wrap',
-                    },
-                  }}
-                />
+                <Box sx={{ width: '100%', mt: 1 }}>
+                  <MarkdownMessage content={message.content} />
+                </Box>
               </ListItem>
               {index < messages.length - 1 && <Divider sx={{ my: 1 }} />}
             </React.Fragment>
