@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
@@ -14,6 +14,10 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -23,12 +27,63 @@ import {
 import { RootState } from '../store';
 import { addMessage } from '../store/chatSlice';
 import { Message } from '../store/chatSlice';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { MessageProtocol } from '../engines/types';
+import { selectAgent, fetchAgents } from '../store/agentSlice';
+import { fetchRoles } from '../store/roleSlice';
+import { fetchPersonalities } from '../store/personalitySlice';
 
 const ChatInterface: React.FC = () => {
   const dispatch = useDispatch();
   const { messages, isConnected, currentEngine } = useSelector((state: RootState) => state.chat);
+  const { agents, selectedAgentId } = useSelector((state: RootState) => state.agent);
+  const { roles } = useSelector((state: RootState) => state.role);
+  const { personalities } = useSelector((state: RootState) => state.personality);
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Handler customizado para processar mensagens de chat
+  // Este handler tem prioridade alta e processa antes do Redux
+  const handleChatMessage = useCallback((protocol: MessageProtocol) => {
+    // Processar apenas mensagens de chat recebidas
+    if (protocol.route === 'chat' && protocol.action === 'message:received') {
+      const messageData = protocol.data;
+      console.log('📨 Mensagem processada no ChatInterface:', messageData);
+      
+      // Aqui você pode processar a mensagem de forma diferente
+      // Por exemplo, aplicar formatação especial, validações, etc.
+      
+      // O Redux adapter ainda vai processar depois (prioridade menor)
+      // Mas você pode interceptar e modificar antes se necessário
+    }
+  }, []);
+
+  // Handler para outros tipos de protocolos (notificações, comandos, etc.)
+  const handleOtherProtocols = useCallback((protocol: MessageProtocol) => {
+    if (protocol.route === 'notification') {
+      console.log('🔔 Notificação recebida:', protocol.data);
+      // Processar notificações de forma diferente
+    } else if (protocol.route === 'command') {
+      console.log('⚙️ Comando recebido:', protocol.data);
+      // Processar comandos de forma diferente
+    }
+  }, []);
+
+  const { sendMessage, registerHandler } = useWebSocket({
+    onMessage: handleChatMessage,
+    messageFilter: (protocol) => protocol.route === 'chat',
+    handlerPriority: 20, // Alta prioridade
+  });
+
+  // Registrar handler adicional para outros protocolos
+  useEffect(() => {
+    const unsubscribe = registerHandler(
+      (protocol) => protocol.route !== 'chat',
+      handleOtherProtocols,
+      15
+    );
+    return unsubscribe;
+  }, [registerHandler, handleOtherProtocols]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -38,19 +93,35 @@ const ChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Carregar agentes, roles e personalidades ao montar componente
+  useEffect(() => {
+    dispatch(fetchAgents(true) as any); // Carregar apenas agentes ativos
+    dispatch(fetchRoles({ activeOnly: true }) as any);
+    dispatch(fetchPersonalities({ activeOnly: true }) as any);
+  }, [dispatch]);
+
   const handleSendMessage = () => {
-    if (inputMessage.trim() && currentEngine) {
+    if (inputMessage.trim() && isConnected) {
+      // Enviar mensagem via WebSocket com agentId se selecionado
+      sendMessage(inputMessage, 'text', selectedAgentId || undefined);
+      
+      // Adicionar mensagem localmente (será atualizada quando a resposta chegar)
       const newMessage: Message = {
         id: Date.now().toString(),
         content: inputMessage,
-        timestamp: new Date(),
-        source: currentEngine,
+        timestamp: new Date().toISOString(),
+        source: currentEngine || 'websocket',
         type: 'text',
       };
       
       dispatch(addMessage(newMessage));
       setInputMessage('');
     }
+  };
+
+  const handleAgentChange = (event: any) => {
+    const agentId = event.target.value === '' ? null : event.target.value;
+    dispatch(selectAgent(agentId));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -90,7 +161,7 @@ const ChatInterface: React.FC = () => {
     <Box sx={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h5" component="h2">
             Chat Interface
           </Typography>
@@ -100,6 +171,59 @@ const ChatInterface: React.FC = () => {
             variant="outlined"
           />
         </Box>
+        <FormControl fullWidth size="small">
+          <InputLabel>Selecionar Agente</InputLabel>
+          <Select
+            value={selectedAgentId || ''}
+            onChange={handleAgentChange}
+            label="Selecionar Agente"
+            disabled={!isConnected}
+          >
+            <MenuItem value="">
+              <em>Nenhum (padrão)</em>
+            </MenuItem>
+            {agents.filter(a => a.isActive).map((agent) => {
+              const role = roles.find((r) => r.id === agent.roleId);
+              const personality = personalities.find((p) => p.id === agent.personalityId);
+              return (
+                <MenuItem key={agent.id} value={agent.id}>
+                  {agent.name} - {role?.name || 'Sem role'} ({personality?.name || 'Sem personalidade'})
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </FormControl>
+        {selectedAgentId && (() => {
+          const selectedAgent = agents.find(a => a.id === selectedAgentId);
+          const selectedRole = roles.find((r) => r.id === selectedAgent?.roleId);
+          const selectedPersonality = personalities.find((p) => p.id === selectedAgent?.personalityId);
+          return selectedAgent ? (
+            <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Chip
+                label={selectedAgent.name}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+              {selectedRole && (
+                <Chip
+                  label={`Role: ${selectedRole.name}`}
+                  size="small"
+                  color="secondary"
+                  variant="outlined"
+                />
+              )}
+              {selectedPersonality && (
+                <Chip
+                  label={`Personalidade: ${selectedPersonality.name}`}
+                  size="small"
+                  color="secondary"
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          ) : null;
+        })()}
       </Paper>
 
       {/* Messages */}
@@ -137,7 +261,7 @@ const ChatInterface: React.FC = () => {
                     variant="caption"
                     sx={{ ml: 'auto', color: 'text.secondary' }}
                   >
-                    {message.timestamp.toLocaleTimeString()}
+                    {new Date(message.timestamp).toLocaleTimeString()}
                   </Typography>
                 </Box>
                 <ListItemText

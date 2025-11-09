@@ -9,7 +9,6 @@ import {
   Chip,
   Switch,
   FormControlLabel,
-  LinearProgress,
   Alert,
   Divider,
 } from '@mui/material';
@@ -94,7 +93,7 @@ const EngineStatus: React.FC = () => {
                 </Typography>
                 {engines.websocket.lastActivity && (
                   <Typography variant="body2" color="text.secondary">
-                    Última atividade: {engines.websocket.lastActivity.toLocaleTimeString()}
+                    Última atividade: {new Date(engines.websocket.lastActivity).toLocaleTimeString()}
                   </Typography>
                 )}
               </Box>
@@ -147,7 +146,7 @@ const EngineStatus: React.FC = () => {
                 </Typography>
                 {engines.whatsapp.lastActivity && (
                   <Typography variant="body2" color="text.secondary">
-                    Última atividade: {engines.whatsapp.lastActivity.toLocaleTimeString()}
+                    Última atividade: {new Date(engines.whatsapp.lastActivity).toLocaleTimeString()}
                   </Typography>
                 )}
               </Box>

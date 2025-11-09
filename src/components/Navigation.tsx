@@ -11,6 +11,7 @@ import {
 import {
   Chat as ChatIcon,
   Settings as SettingsIcon,
+  Person as PersonIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
 } from '@mui/icons-material';
@@ -24,7 +25,13 @@ const Navigation: React.FC = () => {
   const { theme } = useSelector((state: RootState) => state.ui);
 
   const handleNavigationChange = (_event: React.SyntheticEvent, newValue: string) => {
-    navigate(newValue);
+    // Mapear valores do BottomNavigation para rotas reais
+    const routeMap: Record<string, string> = {
+      'chat': '/',
+      'agents': '/agents',
+      'engines': '/engines',
+    };
+    navigate(routeMap[newValue] || '/');
   };
 
   const handleThemeToggle = () => {
@@ -35,6 +42,8 @@ const Navigation: React.FC = () => {
     switch (location.pathname) {
       case '/':
         return 'chat';
+      case '/agents':
+        return 'agents';
       case '/engines':
         return 'engines';
       default:
@@ -63,6 +72,11 @@ const Navigation: React.FC = () => {
             label="Chat"
             value="chat"
             icon={<ChatIcon />}
+          />
+          <BottomNavigationAction
+            label="Agentes"
+            value="agents"
+            icon={<PersonIcon />}
           />
           <BottomNavigationAction
             label="Engines"

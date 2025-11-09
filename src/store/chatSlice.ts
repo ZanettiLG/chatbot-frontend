@@ -3,7 +3,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface Message {
   id: string;
   content: string;
-  timestamp: Date;
+  timestamp: string; // ISO string ao invés de Date
   source: 'websocket' | 'whatsapp' | 'system';
   userId?: string;
   type: 'text' | 'image' | 'audio' | 'video';
@@ -26,7 +26,11 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     addMessage: (state, action: PayloadAction<Message>) => {
-      state.messages.push(action.payload);
+      // Verificar se a mensagem já existe (evitar duplicatas)
+      const exists = state.messages.some(msg => msg.id === action.payload.id);
+      if (!exists) {
+        state.messages.push(action.payload);
+      }
     },
     setConnectionStatus: (state, action: PayloadAction<boolean>) => {
       state.isConnected = action.payload;

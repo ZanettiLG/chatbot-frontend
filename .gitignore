@@ -6,7 +6,9 @@ yarn-error.log*
 
 # Build outputs
 dist/
+dist-ssr/
 build/
+*.local
 *.tsbuildinfo
 
 # Environment variables
@@ -103,6 +105,7 @@ jspm_packages/
 
 # Production build
 /build
+/dist
 
 # Misc
 .DS_Store
