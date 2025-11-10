@@ -236,6 +236,7 @@ export class SocketIOEngine implements MessageEngine {
         data: data.data || data,
         timestamp: data.timestamp || new Date().toISOString(),
         source: data.source || 'websocket',
+        sessionId: data.sessionId, // IMPORTANTE: Preservar sessionId do protocolo
       };
     } else if (data.data) {
       // Se vier com estrutura { data: {...} }
@@ -246,6 +247,7 @@ export class SocketIOEngine implements MessageEngine {
         data: data.data,
         timestamp: data.timestamp || new Date().toISOString(),
         source: 'websocket',
+        sessionId: data.sessionId, // IMPORTANTE: Preservar sessionId do protocolo
       };
     } else {
       // Se vier direto, criar protocolo padrão
@@ -256,6 +258,7 @@ export class SocketIOEngine implements MessageEngine {
         data: data,
         timestamp: new Date().toISOString(),
         source: 'websocket',
+        sessionId: data.sessionId, // IMPORTANTE: Preservar sessionId do protocolo
       };
     }
 

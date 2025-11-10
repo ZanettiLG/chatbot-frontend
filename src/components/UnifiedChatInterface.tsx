@@ -94,14 +94,38 @@ const UnifiedChatInterface: React.FC = () => {
   // WebSocket para receber mensagens em tempo real
   const { sendMessage: sendWebSocketMessage } = useWebSocket({
     onMessage: (protocol: MessageProtocol) => {
+      console.log('📥 UnifiedChatInterface: Message received:', {
+        route: protocol.route,
+        action: protocol.action,
+        source: protocol.source,
+        sessionId: protocol.sessionId,
+        hasData: !!protocol.data,
+      });
+      
       if (protocol.route === 'chat' && protocol.action === 'message:received') {
         const sessionId = protocol.sessionId;
         const conversation = conversations.find((c) => c.sessionId === sessionId);
+        
+        console.log('📥 UnifiedChatInterface: Processing message:', {
+          sessionId,
+          foundConversation: !!conversation,
+          conversationId: conversation?.id,
+          source: protocol.source,
+        });
+        
         if (conversation) {
           const messageContent =
             typeof protocol.data === 'string'
               ? protocol.data
               : protocol.data?.content || protocol.data?.body || '';
+          
+          console.log('📥 UnifiedChatInterface: Adding message to conversation:', {
+            conversationId: conversation.id,
+            messageId: protocol.id,
+            content: messageContent.substring(0, 50),
+            source: protocol.source,
+          });
+          
           dispatch(
             addMessage({
               conversationId: conversation.id,
@@ -113,6 +137,8 @@ const UnifiedChatInterface: React.FC = () => {
               },
             })
           );
+        } else {
+          console.warn('⚠️ UnifiedChatInterface: Conversation not found for sessionId:', sessionId);
         }
       }
     },
@@ -131,24 +157,13 @@ const UnifiedChatInterface: React.FC = () => {
     if (!inputMessage.trim() || !selectedConversationId) return;
 
     try {
+      // Não adicionar mensagem localmente - esperar a resposta do backend
+      // O backend enviará a mensagem com source: 'manager' e ela será recebida via WebSocket
       await dispatch(
         sendMessageToConversation({
           conversationId: selectedConversationId,
           message: inputMessage,
         }) as any
-      );
-
-      // Adicionar mensagem localmente
-      dispatch(
-        addMessage({
-          conversationId: selectedConversationId,
-          message: {
-            id: Date.now().toString(),
-            content: inputMessage,
-            timestamp: new Date().toISOString(),
-            source: selectedConversation?.provider || 'websocket',
-          },
-        })
       );
 
       setInputMessage('');
@@ -173,11 +188,23 @@ const UnifiedChatInterface: React.FC = () => {
   });
 
   const getProviderIcon = (provider: string) => {
-    return provider === 'whatsapp' ? <PhoneIcon /> : <ChatIcon />;
+    if (provider === 'whatsapp') return <PhoneIcon />;
+    if (provider === 'manager') return <ChatIcon />;
+    if (provider === 'system') return <ChatIcon />;
+    return <ChatIcon />;
   };
 
   const getProviderColor = (provider: string) => {
-    return provider === 'whatsapp' ? 'success' : 'primary';
+    if (provider === 'whatsapp') return 'success';
+    if (provider === 'manager') return 'warning';
+    if (provider === 'system') return 'info';
+    return 'primary';
+  };
+
+  const getProviderLabel = (source: string) => {
+    if (source === 'manager') return 'Gerente';
+    if (source === 'system') return 'Sistema';
+    return source;
   };
 
   return (
@@ -296,7 +323,7 @@ const UnifiedChatInterface: React.FC = () => {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, width: '100%' }}>
                           <Chip
-                            label={message.source || selectedConversation.provider}
+                            label={getProviderLabel(message.source || selectedConversation.provider)}
                             size="small"
                             color={getProviderColor(message.source || selectedConversation.provider)}
                             variant="outlined"
