@@ -283,14 +283,23 @@ const EngineStatus: React.FC = () => {
                     </Typography>
                   )}
                 </Box>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<SettingsIcon />}
-                  onClick={() => navigate('/whatsapp-sessions')}
-                >
-                  Gerenciar Sessões
-                </Button>
+                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                         <Button
+                           variant="outlined"
+                           size="small"
+                           startIcon={<SettingsIcon />}
+                           onClick={() => navigate('/whatsapp-sessions')}
+                         >
+                           Gerenciar Sessões
+                         </Button>
+                         <Button
+                           variant="outlined"
+                           size="small"
+                           onClick={() => navigate('/conversations')}
+                         >
+                           Ver Conversas
+                         </Button>
+                       </Box>
               </Box>
             </CardContent>
           </Card>

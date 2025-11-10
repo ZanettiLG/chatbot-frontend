@@ -89,6 +89,15 @@ class RoleService {
       throw new Error(`Failed to delete role: ${response.statusText}`);
     }
   }
+
+  async getTools(roleId: string): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/${roleId}/tools`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch role tools: ${response.statusText}`);
+    }
+    const tools = await response.json();
+    return tools.map((tool: any) => tool.id);
+  }
 }
 
 export const roleService = new RoleService();

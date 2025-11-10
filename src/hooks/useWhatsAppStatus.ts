@@ -14,9 +14,15 @@ export const useWhatsAppStatus = (sessionId?: string) => {
     const socket = io(`${config.wsUrl}/whatsapp-status`, {
       query: sessionId ? { sessionId } : {},
       transports: ['websocket', 'polling'],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
     });
 
     socketRef.current = socket;
+    
+    console.log('🔌 useWhatsAppStatus: Socket created, connecting to /whatsapp-status namespace');
 
     // Listener para QR Code - usar pattern matching do Socket.IO
     const qrHandler = (data: { sessionId: string; qrCode: string }) => {
@@ -55,29 +61,54 @@ export const useWhatsAppStatus = (sessionId?: string) => {
 
     // Escutar eventos específicos se sessionId fornecido
     if (sessionId) {
+      console.log(`📡 Registering specific listeners for session: ${sessionId}`);
       socket.on(`session:${sessionId}:qr`, qrHandler);
       socket.on(`session:${sessionId}:status`, statusHandler);
     } else {
-      // Se não há sessionId, vamos escutar eventos genéricos
-      // O backend emite eventos no formato session:{sessionId}:qr e session:{sessionId}:status
-      // Vamos usar uma abordagem diferente: escutar eventos quando as sessões forem conhecidas
-      // Por enquanto, vamos usar um listener genérico que será atualizado quando necessário
-      // Isso será feito no componente que usa o hook
+      // Se não há sessionId, escutar todos os eventos usando uma abordagem diferente
+      // Vamos usar uma função que intercepta todos os eventos e filtra pelos que nos interessam
+      console.log('📡 Setting up generic WhatsApp status listeners (no sessionId provided)');
+      
+      // Criar um listener genérico que captura qualquer evento
+      // Socket.IO não suporta wildcards, mas podemos usar uma abordagem de interceptação
+      // Vamos registrar listeners dinamicamente quando recebermos eventos
+      
+      // Por enquanto, vamos usar uma abordagem mais simples:
+      // Escutar eventos com um padrão conhecido usando uma função wrapper
+      const createGenericListener = (eventPattern: string, handler: (data: any) => void) => {
+        // Tentar escutar eventos que correspondem ao padrão
+        // Como não podemos usar wildcards, vamos usar uma abordagem diferente:
+        // Vamos escutar eventos específicos que serão registrados dinamicamente no componente
+        // Por enquanto, vamos apenas logar que estamos esperando eventos genéricos
+        console.log(`📡 Waiting for events matching pattern: ${eventPattern}`);
+      };
+      
+      // Nota: Os listeners específicos serão registrados no componente WhatsAppSessionManagement
+      // Este hook apenas mantém a conexão WebSocket aberta
     }
 
     socket.on('connect', () => {
-      console.log('WhatsApp Status WebSocket connected');
+      console.log('✅ WhatsApp Status WebSocket connected to /whatsapp-status namespace');
+      console.log('📡 Socket ID:', socket.id);
+      console.log('📡 SessionId in query:', sessionId || 'none (listening to all sessions)');
     });
 
-    socket.on('disconnect', () => {
-      console.log('WhatsApp Status WebSocket disconnected');
+    socket.on('disconnect', (reason) => {
+      console.log('❌ WhatsApp Status WebSocket disconnected:', reason);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('WhatsApp Status WebSocket connection error:', error);
+      console.error('❌ WhatsApp Status WebSocket connection error:', error);
     });
+    
+    // Log todos os eventos recebidos para debug (mas não processar aqui, deixar o componente fazer isso)
+    // Removido para evitar conflito com o onAny do componente
+    // O componente WhatsAppSessionManagement tem seu próprio onAny que processa os eventos
 
     return () => {
+      // Usar a variável local 'socket' em vez de socketRef.current
+      // porque o ref pode não estar atualizado ainda
+      socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
     };

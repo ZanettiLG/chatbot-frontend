@@ -18,6 +18,8 @@ interface QRCodeDisplayProps {
   qrCode: string | null;
   loading?: boolean;
   sessionName?: string;
+  sessionStatus?: 'disconnected' | 'connecting' | 'qr_required' | 'connected' | 'error';
+  onRegenerateQR?: () => void;
 }
 
 const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
@@ -26,6 +28,8 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   qrCode,
   loading = false,
   sessionName,
+  sessionStatus,
+  onRegenerateQR,
 }) => {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -82,9 +86,26 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
               </Typography>
             </>
           ) : (
-            <Alert severity="warning" sx={{ width: '100%' }}>
-              QR Code não disponível. Tente inicializar a sessão novamente.
-            </Alert>
+            <>
+              <Alert severity="warning" sx={{ width: '100%' }}>
+                QR Code não disponível. 
+                {sessionStatus === 'error' || sessionStatus === 'disconnected' 
+                  ? ' A sessão pode ter expirado ou ocorreu um erro.'
+                  : sessionStatus === 'connected'
+                  ? ' A sessão já está conectada.'
+                  : ' Tente inicializar a sessão novamente.'}
+              </Alert>
+              {onRegenerateQR && sessionStatus !== 'connected' && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={onRegenerateQR}
+                  sx={{ mt: 2 }}
+                >
+                  Gerar Novo QR Code
+                </Button>
+              )}
+            </>
           )}
         </Box>
       </DialogContent>

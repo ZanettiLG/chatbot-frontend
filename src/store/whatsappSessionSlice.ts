@@ -69,6 +69,14 @@ export const closeWhatsAppSession = createAsyncThunk(
   }
 );
 
+export const cancelWhatsAppSessionInitialization = createAsyncThunk(
+  'whatsappSession/cancelInitialization',
+  async (id: string) => {
+    await whatsappSessionService.cancelInitialization(id);
+    return id;
+  }
+);
+
 export const fetchWhatsAppSessionStatus = createAsyncThunk(
   'whatsappSession/fetchStatus',
   async (id: string) => {
@@ -188,6 +196,17 @@ const whatsappSessionSlice = createSlice({
       })
       .addCase(closeWhatsAppSession.rejected, (state, action) => {
         state.error = action.error.message || 'Failed to close WhatsApp session';
+      })
+      // Cancel initialization
+      .addCase(cancelWhatsAppSessionInitialization.fulfilled, (state, action) => {
+        const session = state.sessions.find(s => s.id === action.payload);
+        if (session) {
+          session.status = 'disconnected';
+          delete state.qrCodes[action.payload];
+        }
+      })
+      .addCase(cancelWhatsAppSessionInitialization.rejected, (state, action) => {
+        state.error = action.error.message || 'Failed to cancel WhatsApp session initialization';
       })
       // Fetch status
       .addCase(fetchWhatsAppSessionStatus.fulfilled, (state, action) => {

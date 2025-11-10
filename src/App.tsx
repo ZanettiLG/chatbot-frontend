@@ -13,6 +13,8 @@ import RoleManagement from './components/RoleManagement';
 import PersonalityManagement from './components/PersonalityManagement';
 import RuleManagement from './components/RuleManagement';
 import WhatsAppSessionManagement from './components/WhatsAppSessionManagement';
+import ToolManagement from './components/ToolManagement';
+import UnifiedChatInterface from './components/UnifiedChatInterface';
 
 const App: React.FC = () => {
   console.log('App component rendering');
@@ -38,12 +40,14 @@ const App: React.FC = () => {
           <Navigation />
           <Routes>
             <Route path="/" element={<ChatInterface />} />
+            <Route path="/conversations" element={<UnifiedChatInterface />} />
             <Route path="/engines" element={<EngineStatus />} />
             <Route path="/agents" element={<AgentManagement />} />
             <Route path="/roles" element={<RoleManagement />} />
             <Route path="/personalities" element={<PersonalityManagement />} />
             <Route path="/rules" element={<RuleManagement />} />
             <Route path="/whatsapp-sessions" element={<WhatsAppSessionManagement />} />
+            <Route path="/tools" element={<ToolManagement />} />
           </Routes>
         </Container>
       </ThemeProvider>

@@ -110,6 +110,16 @@ class WhatsAppSessionService {
     }
   }
 
+  async cancelInitialization(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${id}/cancel-initialization`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || `Failed to cancel WhatsApp session initialization: ${response.statusText}`);
+    }
+  }
+
   async getStatus(id: string): Promise<{
     status: string;
     phoneNumber?: string;

@@ -14,6 +14,7 @@ import {
   Person as PersonIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
+  Build as BuildIcon,
 } from '@mui/icons-material';
 import { RootState } from '../store';
 import { setTheme } from '../store/uiSlice';
@@ -30,6 +31,8 @@ const Navigation: React.FC = () => {
       'chat': '/',
       'agents': '/agents',
       'engines': '/engines',
+      'tools': '/tools',
+      'conversations': '/conversations',
     };
     navigate(routeMap[newValue] || '/');
   };
@@ -46,6 +49,10 @@ const Navigation: React.FC = () => {
         return 'agents';
       case '/engines':
         return 'engines';
+      case '/tools':
+        return 'tools';
+      case '/conversations':
+        return 'conversations';
       default:
         return 'chat';
     }
@@ -82,6 +89,16 @@ const Navigation: React.FC = () => {
             label="Engines"
             value="engines"
             icon={<SettingsIcon />}
+          />
+          <BottomNavigationAction
+            label="Ferramentas"
+            value="tools"
+            icon={<BuildIcon />}
+          />
+          <BottomNavigationAction
+            label="Conversas"
+            value="conversations"
+            icon={<ChatIcon />}
           />
         </BottomNavigation>
       </Paper>
