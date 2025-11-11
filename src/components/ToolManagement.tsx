@@ -24,11 +24,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  Search as SearchIcon,
+  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import { RootState } from '../store';
 import {
@@ -39,6 +42,10 @@ import {
   clearError,
 } from '../store/toolSlice';
 import { Tool, ToolParameter } from '../services/toolService';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './EmptyState';
+import ListSkeleton from './ListSkeleton';
+import { Build as BuildIcon } from '@mui/icons-material';
 
 const TOOL_TYPES = ['function', 'database_action', 'api_call'];
 const CATEGORIES = ['pedidos', 'cálculos', 'consultas', 'processamento', 'outros'];
@@ -46,8 +53,11 @@ const CATEGORIES = ['pedidos', 'cálculos', 'consultas', 'processamento', 'outro
 const ToolManagement: React.FC = () => {
   const dispatch = useDispatch();
   const { tools, loading, error } = useSelector((state: RootState) => state.tool);
+  const { showSuccess, showError } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -103,19 +113,57 @@ const ToolManagement: React.FC = () => {
     setEditingTool(null);
   };
 
-  const handleSubmit = () => {
-    if (editingTool) {
-      dispatch(updateTool({ id: editingTool.id, data: formData }) as any);
-    } else {
-      dispatch(createTool(formData) as any);
+  const handleSubmit = async () => {
+    try {
+      if (editingTool) {
+        await dispatch(updateTool({ id: editingTool.id, data: formData }) as any);
+        showSuccess('Ferramenta atualizada com sucesso!');
+      } else {
+        await dispatch(createTool(formData) as any);
+        showSuccess('Ferramenta criada com sucesso!');
+      }
+      handleCloseDialog();
+      dispatch(fetchTools() as any);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.toString() || 'Erro ao salvar ferramenta';
+      showError(`Erro ao salvar ferramenta: ${errorMessage}`);
     }
-    handleCloseDialog();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta ferramenta?')) {
-      dispatch(deleteTool(id) as any);
+      try {
+        await dispatch(deleteTool(id) as any);
+        showSuccess('Ferramenta excluída com sucesso!');
+        dispatch(fetchTools() as any);
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || 'Erro ao excluir ferramenta';
+        showError(`Erro ao excluir ferramenta: ${errorMessage}`);
+      }
     }
+  };
+
+  // Função para filtrar tools baseado na busca e categoria
+  const getFilteredTools = () => {
+    return tools.filter((tool) => {
+      // Filtro por categoria
+      const matchesCategory = selectedCategory === 'todas' || tool.category === selectedCategory;
+      
+      // Filtro por busca (nome ou descrição)
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        !searchTerm || 
+        tool.name.toLowerCase().includes(searchLower) || 
+        tool.description.toLowerCase().includes(searchLower);
+      
+      return matchesCategory && matchesSearch;
+    });
+  };
+
+  // Obter categorias únicas das tools
+  const getAvailableCategories = () => {
+    const categories = new Set(tools.map(tool => tool.category));
+    return Array.from(categories).sort();
   };
 
   return (
@@ -140,36 +188,93 @@ const ToolManagement: React.FC = () => {
           </Alert>
         )}
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
+        {loading && tools.length === 0 ? (
+          <ListSkeleton count={5} hasSecondary={true} hasAction={true} />
+        ) : !loading && tools.length === 0 ? (
+          <EmptyState
+            icon={<BuildIcon />}
+            title="Nenhuma ferramenta cadastrada"
+            description="Crie ferramentas para estender as capacidades dos seus agentes. Ferramentas podem ser funções, ações de banco de dados ou chamadas de API."
+            actionLabel="Criar Primeira Ferramenta"
+            onAction={() => handleOpenDialog()}
+            size="medium"
+          />
         ) : (
-          <List>
-            {tools.map((tool) => (
-              <ListItem key={tool.id}>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="h6">{tool.name}</Typography>
-                      <Chip label={tool.type} size="small" color="primary" variant="outlined" />
-                      <Chip label={tool.category} size="small" />
-                      {!tool.isActive && <Chip label="Inativa" size="small" color="error" />}
-                    </Box>
-                  }
-                  secondary={tool.description}
+          <>
+            {/* Barra de busca e filtros */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                placeholder="Buscar ferramentas por nome ou descrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                variant="outlined"
+                size="small"
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <FilterListIcon sx={{ color: 'text.secondary' }} />
+                <Chip
+                  label="Todas"
+                  onClick={() => setSelectedCategory('todas')}
+                  color={selectedCategory === 'todas' ? 'primary' : 'default'}
+                  variant={selectedCategory === 'todas' ? 'filled' : 'outlined'}
+                  size="small"
+                  sx={{ cursor: 'pointer' }}
                 />
-                <ListItemSecondaryAction>
-                  <IconButton edge="end" onClick={() => handleOpenDialog(tool)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton edge="end" onClick={() => handleDelete(tool.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
-          </List>
+                {getAvailableCategories().map((category) => (
+                  <Chip
+                    key={category}
+                    label={category}
+                    onClick={() => setSelectedCategory(category)}
+                    color={selectedCategory === category ? 'primary' : 'default'}
+                    variant={selectedCategory === category ? 'filled' : 'outlined'}
+                    size="small"
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            {/* Lista de ferramentas filtradas */}
+            {getFilteredTools().length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                Nenhuma ferramenta encontrada com os filtros aplicados.
+              </Typography>
+            ) : (
+              <List>
+                {getFilteredTools().map((tool) => (
+                  <ListItem key={tool.id}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="h6">{tool.name}</Typography>
+                          <Chip label={tool.type} size="small" color="primary" variant="outlined" />
+                          <Chip label={tool.category} size="small" />
+                          {!tool.isActive && <Chip label="Inativa" size="small" color="error" />}
+                        </Box>
+                      }
+                      secondary={tool.description}
+                    />
+                    <ListItemSecondaryAction>
+                      <IconButton edge="end" onClick={() => handleOpenDialog(tool)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton edge="end" onClick={() => handleDelete(tool.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </>
         )}
       </Paper>
 

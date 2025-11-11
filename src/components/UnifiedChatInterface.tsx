@@ -229,12 +229,16 @@ const UnifiedChatInterface: React.FC = () => {
         ) : (
           <List sx={{ flex: 1, overflow: 'auto' }}>
             {filteredConversations.length === 0 ? (
-              <ListItem>
-                <ListItemText
-                  primary="Nenhuma conversa encontrada"
-                  secondary="As conversas aparecerão aqui quando houver mensagens"
-                />
-              </ListItem>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300, p: 4 }}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    Nenhuma conversa encontrada
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    As conversas aparecerão aqui quando houver mensagens
+                  </Typography>
+                </Box>
+              </Box>
             ) : (
               filteredConversations.map((conversation) => (
                 <React.Fragment key={conversation.id}>

@@ -26,12 +26,15 @@ import {
   MenuItem,
   Tooltip,
   Checkbox,
+  InputAdornment,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
   Build as BuildIcon,
+  Search as SearchIcon,
+  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
@@ -45,6 +48,10 @@ import {
 import { Role, roleService } from '../services/roleService';
 import { fetchTools, addToolToRole, removeToolFromRole } from '../store/toolSlice';
 import { Tool } from '../services/toolService';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './EmptyState';
+import ListSkeleton from './ListSkeleton';
+import { AssignmentInd as AssignmentIndIcon } from '@mui/icons-material';
 
 const CATEGORIES = [
   'atendimento',
@@ -60,11 +67,14 @@ const RoleManagement: React.FC = () => {
   const navigate = useNavigate();
   const { roles, loading, error } = useSelector((state: RootState) => state.role);
   const { tools } = useSelector((state: RootState) => state.tool);
+  const { showSuccess, showError } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [selectedRoleForTools, setSelectedRoleForTools] = useState<Role | null>(null);
   const [roleToolIds, setRoleToolIds] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -116,29 +126,58 @@ const RoleManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (editingRole) {
-      await dispatch(updateRole({ id: editingRole.id, data: formData }) as any);
-    } else {
-      await dispatch(createRole(formData as any) as any);
+    try {
+      if (editingRole) {
+        await dispatch(updateRole({ id: editingRole.id, data: formData }) as any);
+        showSuccess('Role atualizado com sucesso!');
+      } else {
+        await dispatch(createRole(formData as any) as any);
+        showSuccess('Role criado com sucesso!');
+      }
+      handleCloseDialog();
+      dispatch(fetchRoles() as any);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.toString() || 'Erro ao salvar role';
+      showError(`Erro ao salvar role: ${errorMessage}`);
     }
-    handleCloseDialog();
-    dispatch(fetchRoles() as any);
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este role?')) {
-      await dispatch(deleteRole(id) as any);
-      dispatch(fetchRoles() as any);
+      try {
+        await dispatch(deleteRole(id) as any);
+        showSuccess('Role excluído com sucesso!');
+        dispatch(fetchRoles() as any);
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || 'Erro ao excluir role';
+        showError(`Erro ao excluir role: ${errorMessage}`);
+      }
     }
   };
 
-  if (loading && roles.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Função para filtrar tools baseado na busca e categoria
+  const getFilteredTools = () => {
+    return tools.filter((tool) => {
+      // Filtro por categoria
+      const matchesCategory = selectedCategory === 'todas' || tool.category === selectedCategory;
+      
+      // Filtro por busca (nome ou descrição)
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        !searchTerm || 
+        tool.name.toLowerCase().includes(searchLower) || 
+        tool.description.toLowerCase().includes(searchLower);
+      
+      return matchesCategory && matchesSearch;
+    });
+  };
+
+  // Obter categorias únicas das tools
+  const getAvailableCategories = () => {
+    const categories = new Set(tools.map(tool => tool.category));
+    return Array.from(categories).sort();
+  };
+
 
   return (
     <Box sx={{ p: 3 }}>
@@ -147,43 +186,13 @@ const RoleManagement: React.FC = () => {
           <Typography variant="h4" component="h1">
             Gerenciamento de Roles (Cargos)
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/agents')}
-            >
-              Agentes
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/personalities')}
-            >
-              Personalidades
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/rules')}
-            >
-              Regras
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/tools')}
-            >
-              Ferramentas
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Novo Role
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Novo Role
+          </Button>
         </Box>
 
         {error && (
@@ -192,8 +201,20 @@ const RoleManagement: React.FC = () => {
           </Alert>
         )}
 
-        <List>
-          {roles.map((role) => (
+        {loading && roles.length === 0 ? (
+          <ListSkeleton count={5} hasSecondary={true} hasAction={true} />
+        ) : !loading && roles.length === 0 ? (
+          <EmptyState
+            icon={<AssignmentIndIcon />}
+            title="Nenhum role cadastrado"
+            description="Crie roles (cargos) para definir as responsabilidades e capacidades dos seus agentes. Roles ajudam a organizar e especializar os agentes."
+            actionLabel="Criar Primeiro Role"
+            onAction={() => handleOpenDialog()}
+            size="medium"
+          />
+        ) : (
+          <List>
+            {roles.map((role) => (
             <ListItem
               key={role.id}
               sx={{
@@ -251,11 +272,6 @@ const RoleManagement: React.FC = () => {
             </ListItem>
           ))}
         </List>
-
-        {roles.length === 0 && !loading && (
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-            Nenhum role cadastrado. Clique em "Novo Role" para criar um.
-          </Typography>
         )}
       </Paper>
 
@@ -329,7 +345,11 @@ const RoleManagement: React.FC = () => {
       </Dialog>
 
       {/* Dialog para gerenciar Tools da Role */}
-      <Dialog open={toolsDialogOpen} onClose={() => setToolsDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={toolsDialogOpen} onClose={() => {
+        setToolsDialogOpen(false);
+        setSearchTerm('');
+        setSelectedCategory('todas');
+      }} maxWidth="md" fullWidth>
         <DialogTitle>
           Ferramentas da Role: {selectedRoleForTools?.name}
         </DialogTitle>
@@ -338,13 +358,61 @@ const RoleManagement: React.FC = () => {
             {tools.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 Nenhuma ferramenta disponível. Crie ferramentas em{' '}
-                <Button size="small" onClick={() => navigate('/tools')}>
+                <Button size="small" onClick={() => navigate('/dashboard/tools')}>
                   Gerenciamento de Ferramentas
                 </Button>
               </Typography>
             ) : (
-              <List>
-                {tools.map((tool) => {
+              <>
+                {/* Barra de busca e filtros */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <TextField
+                    fullWidth
+                    placeholder="Buscar ferramentas por nome ou descrição..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: 'text.secondary' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    variant="outlined"
+                    size="small"
+                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <FilterListIcon sx={{ color: 'text.secondary' }} />
+                    <Chip
+                      label="Todas"
+                      onClick={() => setSelectedCategory('todas')}
+                      color={selectedCategory === 'todas' ? 'primary' : 'default'}
+                      variant={selectedCategory === 'todas' ? 'filled' : 'outlined'}
+                      size="small"
+                      sx={{ cursor: 'pointer' }}
+                    />
+                    {getAvailableCategories().map((category) => (
+                      <Chip
+                        key={category}
+                        label={category}
+                        onClick={() => setSelectedCategory(category)}
+                        color={selectedCategory === category ? 'primary' : 'default'}
+                        variant={selectedCategory === category ? 'filled' : 'outlined'}
+                        size="small"
+                        sx={{ cursor: 'pointer' }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+
+                {/* Lista de ferramentas filtradas */}
+                {getFilteredTools().length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                    Nenhuma ferramenta encontrada com os filtros aplicados.
+                  </Typography>
+                ) : (
+                  <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                    {getFilteredTools().map((tool) => {
                   const isAssociated = roleToolIds.has(tool.id);
                   return (
                     <ListItem key={tool.id}>
@@ -397,7 +465,9 @@ const RoleManagement: React.FC = () => {
                     </ListItem>
                   );
                 })}
-              </List>
+                  </List>
+                )}
+              </>
             )}
           </Box>
         </DialogContent>

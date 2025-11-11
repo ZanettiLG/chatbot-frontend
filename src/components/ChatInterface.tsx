@@ -158,7 +158,14 @@ const ChatInterface: React.FC = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ 
+      height: 'calc(100vh - 200px)', 
+      display: 'flex', 
+      flexDirection: 'column',
+      p: { xs: 2, sm: 3, md: 4 },
+      maxWidth: '1200px',
+      mx: 'auto',
+    }}>
       {/* Header */}
       <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

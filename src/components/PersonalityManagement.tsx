@@ -26,7 +26,6 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
 import {
   fetchPersonalities,
@@ -36,11 +35,15 @@ import {
   clearError,
 } from '../store/personalitySlice';
 import { Personality } from '../services/personalityService';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './EmptyState';
+import ListSkeleton from './ListSkeleton';
+import { SentimentSatisfied as SentimentSatisfiedIcon } from '@mui/icons-material';
 
 const PersonalityManagement: React.FC = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { personalities, loading, error } = useSelector((state: RootState) => state.personality);
+  const { showSuccess, showError } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPersonality, setEditingPersonality] = useState<Personality | null>(null);
   const [formData, setFormData] = useState({
@@ -100,19 +103,32 @@ const PersonalityManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (editingPersonality) {
-      await dispatch(updatePersonality({ id: editingPersonality.id, data: formData }) as any);
-    } else {
-      await dispatch(createPersonality(formData as any) as any);
+    try {
+      if (editingPersonality) {
+        await dispatch(updatePersonality({ id: editingPersonality.id, data: formData }) as any);
+        showSuccess('Personalidade atualizada com sucesso!');
+      } else {
+        await dispatch(createPersonality(formData as any) as any);
+        showSuccess('Personalidade criada com sucesso!');
+      }
+      handleCloseDialog();
+      dispatch(fetchPersonalities() as any);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.toString() || 'Erro ao salvar personalidade';
+      showError(`Erro ao salvar personalidade: ${errorMessage}`);
     }
-    handleCloseDialog();
-    dispatch(fetchPersonalities() as any);
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta personalidade?')) {
-      await dispatch(deletePersonality(id) as any);
-      dispatch(fetchPersonalities() as any);
+      try {
+        await dispatch(deletePersonality(id) as any);
+        showSuccess('Personalidade excluída com sucesso!');
+        dispatch(fetchPersonalities() as any);
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || 'Erro ao excluir personalidade';
+        showError(`Erro ao excluir personalidade: ${errorMessage}`);
+      }
     }
   };
 
@@ -138,13 +154,6 @@ const PersonalityManagement: React.FC = () => {
     setFormData({ ...formData, examples: formData.examples.filter((_, i) => i !== index) });
   };
 
-  if (loading && personalities.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -153,36 +162,13 @@ const PersonalityManagement: React.FC = () => {
           <Typography variant="h4" component="h1">
             Gerenciamento de Personalidades
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/agents')}
-            >
-              Agentes
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/roles')}
-            >
-              Roles
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/rules')}
-            >
-              Regras
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Nova Personalidade
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Nova Personalidade
+          </Button>
         </Box>
 
         {error && (
@@ -191,8 +177,20 @@ const PersonalityManagement: React.FC = () => {
           </Alert>
         )}
 
-        <List>
-          {personalities.map((personality) => (
+        {loading && personalities.length === 0 ? (
+          <ListSkeleton count={5} hasSecondary={true} hasAction={true} />
+        ) : !loading && personalities.length === 0 ? (
+          <EmptyState
+            icon={<SentimentSatisfiedIcon />}
+            title="Nenhuma personalidade cadastrada"
+            description="Crie personalidades para definir o tom e estilo de comunicação dos seus agentes. Personalidades ajudam a criar experiências mais naturais e consistentes."
+            actionLabel="Criar Primeira Personalidade"
+            onAction={() => handleOpenDialog()}
+            size="medium"
+          />
+        ) : (
+          <List>
+            {personalities.map((personality) => (
             <ListItem
               key={personality.id}
               sx={{
@@ -234,11 +232,6 @@ const PersonalityManagement: React.FC = () => {
             </ListItem>
           ))}
         </List>
-
-        {personalities.length === 0 && !loading && (
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-            Nenhuma personalidade cadastrada. Clique em "Nova Personalidade" para criar uma.
-          </Typography>
         )}
       </Paper>
 

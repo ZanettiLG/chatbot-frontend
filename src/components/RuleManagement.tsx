@@ -29,8 +29,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  Rule as RuleIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
 import {
   fetchRules,
@@ -40,6 +40,9 @@ import {
   clearError,
 } from '../store/ruleSlice';
 import { Rule } from '../services/ruleService';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './EmptyState';
+import ListSkeleton from './ListSkeleton';
 
 const CATEGORIES = [
   'comunicação',
@@ -51,8 +54,8 @@ const CATEGORIES = [
 
 const RuleManagement: React.FC = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { rules, loading, error } = useSelector((state: RootState) => state.rule);
+  const { showSuccess, showError } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [formData, setFormData] = useState({
@@ -105,29 +108,35 @@ const RuleManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (editingRule) {
-      await dispatch(updateRule({ id: editingRule.id, data: formData }) as any);
-    } else {
-      await dispatch(createRule(formData as any) as any);
+    try {
+      if (editingRule) {
+        await dispatch(updateRule({ id: editingRule.id, data: formData }) as any);
+        showSuccess('Regra atualizada com sucesso!');
+      } else {
+        await dispatch(createRule(formData as any) as any);
+        showSuccess('Regra criada com sucesso!');
+      }
+      handleCloseDialog();
+      dispatch(fetchRules() as any);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.toString() || 'Erro ao salvar regra';
+      showError(`Erro ao salvar regra: ${errorMessage}`);
     }
-    handleCloseDialog();
-    dispatch(fetchRules() as any);
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta regra?')) {
-      await dispatch(deleteRule(id) as any);
-      dispatch(fetchRules() as any);
+      try {
+        await dispatch(deleteRule(id) as any);
+        showSuccess('Regra excluída com sucesso!');
+        dispatch(fetchRules() as any);
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || 'Erro ao excluir regra';
+        showError(`Erro ao excluir regra: ${errorMessage}`);
+      }
     }
   };
 
-  if (loading && rules.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -136,36 +145,13 @@ const RuleManagement: React.FC = () => {
           <Typography variant="h4" component="h1">
             Gerenciamento de Regras
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/agents')}
-            >
-              Agentes
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/roles')}
-            >
-              Roles
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/personalities')}
-            >
-              Personalidades
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Nova Regra
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Nova Regra
+          </Button>
         </Box>
 
         {error && (
@@ -174,8 +160,20 @@ const RuleManagement: React.FC = () => {
           </Alert>
         )}
 
-        <List>
-          {rules.map((rule) => (
+        {loading && rules.length === 0 ? (
+          <ListSkeleton count={5} hasSecondary={true} hasAction={true} />
+        ) : !loading && rules.length === 0 ? (
+          <EmptyState
+            icon={<RuleIcon />}
+            title="Nenhuma regra cadastrada"
+            description="Crie regras para definir o comportamento dos seus agentes. Regras podem ser de comunicação, qualidade, segurança e mais."
+            actionLabel="Criar Primeira Regra"
+            onAction={() => handleOpenDialog()}
+            size="medium"
+          />
+        ) : (
+          <List>
+            {rules.map((rule) => (
             <ListItem
               key={rule.id}
               sx={{
@@ -215,11 +213,6 @@ const RuleManagement: React.FC = () => {
             </ListItem>
           ))}
         </List>
-
-        {rules.length === 0 && !loading && (
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-            Nenhuma regra cadastrada. Clique em "Nova Regra" para criar uma.
-          </Typography>
         )}
       </Paper>
 

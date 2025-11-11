@@ -9,39 +9,29 @@ import {
   Chip,
   Switch,
   FormControlLabel,
-  Alert,
   Divider,
-  Button,
 } from '@mui/material';
 import {
   Wifi as WifiIcon,
   WifiOff as WifiOffIcon,
-  Phone as PhoneIcon,
-  PhoneDisabled as PhoneDisabledIcon,
+  Storage as StorageIcon,
+  CloudQueue as CloudQueueIcon,
   Settings as SettingsIcon,
+  Psychology as PsychologyIcon,
+  WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
-import { fetchWhatsAppSessions } from '../store/whatsappSessionSlice';
 import { updateEngineStatus } from '../store/engineSlice';
-import { useWhatsAppStatus } from '../hooks/useWhatsAppStatus';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 const EngineStatus: React.FC = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { engines, selectedEngine } = useSelector((state: RootState) => state.engine);
-  const { sessions } = useSelector((state: RootState) => state.whatsappSession);
+  const { engines } = useSelector((state: RootState) => state.engine);
   const { isConnected: websocketConnected } = useSelector((state: RootState) => state.chat);
+  const { sessions } = useSelector((state: RootState) => state.whatsappSession);
 
   // Conectar ao WebSocket para receber atualizações de status
-  useWhatsAppStatus();
   useWebSocket({ autoConnect: true });
-
-  // Carregar sessões e sincronizar status inicial ao montar
-  useEffect(() => {
-    dispatch(fetchWhatsAppSessions() as any);
-  }, [dispatch]);
 
   // Sincronizar status do WebSocket com base no estado atual da conexão
   useEffect(() => {
@@ -57,7 +47,6 @@ const EngineStatus: React.FC = () => {
   // Sincronizar status do WhatsApp com base nas sessões carregadas
   useEffect(() => {
     if (sessions.length === 0) {
-      // Se não há sessões, garantir que o status está desconectado
       dispatch(updateEngineStatus({
         engine: 'whatsapp',
         status: {
@@ -68,13 +57,11 @@ const EngineStatus: React.FC = () => {
       return;
     }
 
-    // Verificar se há alguma sessão conectada
     const connectedSession = sessions.find(s => s.status === 'connected');
     const hasQRCode = sessions.some(s => s.status === 'qr_required');
     const isConnecting = sessions.some(s => s.status === 'connecting');
 
     if (connectedSession) {
-      // Se há pelo menos uma sessão conectada, marcar como conectado
       dispatch(updateEngineStatus({
         engine: 'whatsapp',
         status: {
@@ -100,7 +87,6 @@ const EngineStatus: React.FC = () => {
         },
       }));
     } else {
-      // Todas as sessões estão desconectadas
       dispatch(updateEngineStatus({
         engine: 'whatsapp',
         status: {
@@ -111,13 +97,6 @@ const EngineStatus: React.FC = () => {
     }
   }, [sessions, dispatch]);
 
-  const getConnectionIcon = (isConnected: boolean, engineType: string) => {
-    if (engineType === 'websocket') {
-      return isConnected ? <WifiIcon color="success" /> : <WifiOffIcon color="error" />;
-    } else {
-      return isConnected ? <PhoneIcon color="success" /> : <PhoneDisabledIcon color="error" />;
-    }
-  };
 
   const getStatusColor = (isConnected: boolean) => {
     return isConnected ? 'success' : 'error';
@@ -127,40 +106,26 @@ const EngineStatus: React.FC = () => {
     return isConnected ? 'Conectado' : 'Desconectado';
   };
 
-  const getSessionStatusColor = (status: string) => {
-    switch (status) {
-      case 'connected':
-        return 'success';
-      case 'connecting':
-        return 'warning';
-      case 'qr_required':
-        return 'info';
-      case 'disconnected':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
-        Status das Engines
+        Configurações
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Gerencie o status das engines e configurações gerais do sistema
       </Typography>
       
       <Grid container spacing={3}>
         {/* WebSocket Engine */}
         <Grid item xs={12} md={6}>
-          <Card 
-            sx={{ 
-              height: '100%',
-              border: selectedEngine === 'websocket' ? 2 : 0,
-              borderColor: 'primary.main',
-            }}
-          >
+          <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                {getConnectionIcon(engines.websocket.isConnected, 'websocket')}
+                {engines.websocket.isConnected ? (
+                  <WifiIcon color="success" />
+                ) : (
+                  <WifiOffIcon color="error" />
+                )}
                 <Typography variant="h5" component="h2" sx={{ ml: 1 }}>
                   WebSocket
                 </Typography>
@@ -185,35 +150,170 @@ const EngineStatus: React.FC = () => {
                   </Typography>
                 )}
               </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Database/PostgreSQL */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <StorageIcon color="primary" />
+                <Typography variant="h5" component="h2" sx={{ ml: 1 }}>
+                  Database (PostgreSQL)
+                </Typography>
+              </Box>
+              
+              <Box sx={{ mb: 2 }}>
+                <Chip
+                  label="Conectado"
+                  color="success"
+                  variant="outlined"
+                  sx={{ mb: 1 }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Host: <strong>localhost</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Porta: <strong>5432</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Database: <strong>salveai_db</strong>
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Redis */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <CloudQueueIcon color="primary" />
+                <Typography variant="h5" component="h2" sx={{ ml: 1 }}>
+                  Redis
+                </Typography>
+              </Box>
+              
+              <Box sx={{ mb: 2 }}>
+                <Chip
+                  label="Conectado"
+                  color="success"
+                  variant="outlined"
+                  sx={{ mb: 1 }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Host: <strong>localhost</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Porta: <strong>6379</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  TTL Padrão: <strong>1800s</strong>
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Kafka */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <SettingsIcon color="primary" />
+                <Typography variant="h5" component="h2" sx={{ ml: 1 }}>
+                  Kafka
+                </Typography>
+              </Box>
+              
+              <Box sx={{ mb: 2 }}>
+                <Chip
+                  label="Conectado"
+                  color="success"
+                  variant="outlined"
+                  sx={{ mb: 1 }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Brokers: <strong>localhost:9092</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Client ID: <strong>salveai-client</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Group ID: <strong>salveai-group</strong>
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* OpenAI Configuration */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <PsychologyIcon color="primary" />
+                <Typography variant="h5" component="h2" sx={{ ml: 1 }}>
+                  OpenAI
+                </Typography>
+              </Box>
+              
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Modelo: <strong>gpt-4o-mini</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Temperature: <strong>0.7</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Max Tokens: <strong>1000</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Embedding Model: <strong>text-embedding-3-small</strong>
+                </Typography>
+              </Box>
 
               <Divider sx={{ my: 2 }} />
 
               <FormControlLabel
                 control={
                   <Switch
-                    checked={engines.websocket.isEnabled}
-                    disabled
+                    checked={true}
+                    onChange={(e) => {
+                      // TODO: Implementar toggle quando API estiver disponível
+                      console.log('OpenAI toggle:', e.target.checked);
+                    }}
                     color="primary"
                   />
                 }
-                label="Engine Habilitada"
+                label="OpenAI Habilitado"
               />
             </CardContent>
           </Card>
         </Grid>
 
-        {/* WhatsApp Engine */}
+        {/* WhatsApp */}
         <Grid item xs={12} md={6}>
-          <Card 
-            sx={{ 
-              height: '100%',
-              border: selectedEngine === 'whatsapp' ? 2 : 0,
-              borderColor: 'primary.main',
-            }}
-          >
+          <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                {getConnectionIcon(engines.whatsapp.isConnected, 'whatsapp')}
+                {engines.whatsapp.isConnected ? (
+                  <WhatsAppIcon color="success" />
+                ) : (
+                  <WhatsAppIcon color="error" />
+                )}
                 <Typography variant="h5" component="h2" sx={{ ml: 1 }}>
                   WhatsApp
                 </Typography>
@@ -237,25 +337,10 @@ const EngineStatus: React.FC = () => {
                     Última atividade: {new Date(engines.whatsapp.lastActivity).toLocaleTimeString()}
                   </Typography>
                 )}
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Status da Sessão:
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Status da Sessão: <strong>{engines.whatsapp.sessionStatus}</strong>
                 </Typography>
-                <Chip
-                  label={engines.whatsapp.sessionStatus}
-                  color={getSessionStatusColor(engines.whatsapp.sessionStatus)}
-                  variant="outlined"
-                  size="small"
-                />
               </Box>
-
-              {engines.whatsapp.qrCode && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  QR Code disponível para autenticação
-                </Alert>
-              )}
 
               <Divider sx={{ my: 2 }} />
 
@@ -263,44 +348,19 @@ const EngineStatus: React.FC = () => {
                 control={
                   <Switch
                     checked={engines.whatsapp.isEnabled}
-                    disabled
+                    onChange={(e) => {
+                      dispatch(updateEngineStatus({
+                        engine: 'whatsapp',
+                        status: {
+                          isEnabled: e.target.checked,
+                        },
+                      }));
+                    }}
                     color="primary"
                   />
                 }
-                label="Engine Habilitada"
+                label="WhatsApp Habilitado"
               />
-
-              <Divider sx={{ my: 2 }} />
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Sessões: <strong>{sessions.length}</strong>
-                  </Typography>
-                  {sessions.length > 0 && (
-                    <Typography variant="body2" color="text.secondary">
-                      Conectadas: <strong>{sessions.filter(s => s.status === 'connected').length}</strong>
-                    </Typography>
-                  )}
-                </Box>
-                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                         <Button
-                           variant="outlined"
-                           size="small"
-                           startIcon={<SettingsIcon />}
-                           onClick={() => navigate('/whatsapp-sessions')}
-                         >
-                           Gerenciar Sessões
-                         </Button>
-                         <Button
-                           variant="outlined"
-                           size="small"
-                           onClick={() => navigate('/conversations')}
-                         >
-                           Ver Conversas
-                         </Button>
-                       </Box>
-              </Box>
             </CardContent>
           </Card>
         </Grid>

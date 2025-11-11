@@ -1,8 +1,3 @@
-/**
- * @deprecated Este componente foi substituído por WhatsAppManagement.tsx
- * A funcionalidade foi movida para /dashboard/whatsapp
- * Este arquivo é mantido apenas para referência e pode ser removido no futuro
- */
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -50,7 +45,6 @@ import {
   closeWhatsAppSession,
   cancelWhatsAppSessionInitialization,
   clearError,
-  selectSession,
   setQRCode,
   updateSessionStatus,
   clearQRCode,
@@ -58,12 +52,17 @@ import {
 import { fetchAgents } from '../store/agentSlice';
 import { WhatsAppSession } from '../services/whatsappSessionService';
 import { useWhatsAppStatus } from '../hooks/useWhatsAppStatus';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './EmptyState';
+import ListSkeleton from './ListSkeleton';
 import QRCodeDisplay from './QRCodeDisplay';
+import { WhatsApp as WhatsAppIcon } from '@mui/icons-material';
 
-const WhatsAppSessionManagement: React.FC = () => {
+const WhatsAppManagement: React.FC = () => {
   const dispatch = useDispatch();
   const { sessions, loading, error, qrCodes } = useSelector((state: RootState) => state.whatsappSession);
   const { agents } = useSelector((state: RootState) => state.agent);
+  const { showSuccess, showError, showInfo } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingSession, setEditingSession] = useState<WhatsAppSession | null>(null);
   const [formData, setFormData] = useState({
@@ -78,250 +77,122 @@ const WhatsAppSessionManagement: React.FC = () => {
   // Conectar ao WebSocket para todas as sessões
   const { socket } = useWhatsAppStatus();
 
-  // Log quando o socket estiver disponível
+  // Carregar dados iniciais
   useEffect(() => {
-    if (socket) {
-      console.log('✅ WhatsAppSessionManagement: Socket available, ID:', socket.id, 'connected:', socket.connected);
-    } else {
-      console.warn('⚠️ WhatsAppSessionManagement: Socket not available yet');
-    }
-  }, [socket]);
+    dispatch(fetchWhatsAppSessions() as any);
+    dispatch(fetchAgents(true) as any);
+  }, [dispatch]);
 
   // Registrar listeners para cada sessão quando elas mudarem
   useEffect(() => {
     if (!socket) {
-      console.warn('⚠️ WhatsAppSessionManagement: Cannot register listeners, socket not available');
       return;
     }
     
-    // Função para registrar todos os listeners
     const registerAllListeners = () => {
-      console.log('📡 Registering all listeners, socket connected:', socket.connected, 'socket ID:', socket.id);
+      const handlers: Array<() => void> = [];
+      const sessionIdMap = new Map<string, string>();
+      
+      sessions.forEach((session) => {
+        sessionIdMap.set(session.id, session.id);
+        if (!session.id.startsWith('whatsapp_')) {
+          sessionIdMap.set(`whatsapp_${session.id}`, session.id);
+        }
+      });
 
-    const handlers: Array<() => void> = [];
+      const qrHandler = (data: { sessionId: string; qrCode: string }) => {
+        if (!data || !data.sessionId || !data.qrCode) {
+          return;
+        }
+        
+        let matchedSessionId: string | undefined = sessionIdMap.get(data.sessionId);
+        
+        if (!matchedSessionId && data.sessionId.startsWith('whatsapp_')) {
+          const withoutPrefix = data.sessionId.replace(/^whatsapp_/, '');
+          matchedSessionId = sessionIdMap.get(withoutPrefix);
+        }
+        
+        if (!matchedSessionId) {
+          const withPrefix = `whatsapp_${data.sessionId}`;
+          matchedSessionId = sessionIdMap.get(withPrefix);
+        }
+        
+        if (!matchedSessionId) {
+          const foundSession = sessions.find(s => 
+            s.id === data.sessionId || 
+            s.id === `whatsapp_${data.sessionId}` || 
+            `whatsapp_${s.id}` === data.sessionId
+          );
+          if (foundSession) {
+            matchedSessionId = foundSession.id;
+          } else {
+            matchedSessionId = data.sessionId;
+          }
+        }
 
-    // Criar um mapa de sessionIds para facilitar o matching
-    const sessionIdMap = new Map<string, string>();
-    sessions.forEach((session) => {
-      // Mapear tanto o ID do banco quanto possíveis variações (com/sem prefixo whatsapp_)
-      sessionIdMap.set(session.id, session.id);
-      // Se o sessionId do evento tiver prefixo whatsapp_, também mapear
-      if (!session.id.startsWith('whatsapp_')) {
-        sessionIdMap.set(`whatsapp_${session.id}`, session.id);
-      }
-    });
+        dispatch(setQRCode({ sessionId: matchedSessionId, qrCode: data.qrCode }));
+        
+        const matchedSession = sessions.find(s => s.id === matchedSessionId);
+        if (matchedSession && matchedSession.status !== 'qr_required') {
+          dispatch(updateSessionStatus({
+            sessionId: matchedSessionId,
+            status: 'qr_required',
+          }));
+        }
+      };
 
-    // Handler genérico para QR Code que verifica todos os sessionIds possíveis
-    const qrHandler = (data: { sessionId: string; qrCode: string }) => {
-      console.log('📱 QR Code event received:', data.sessionId, 'qrCode type:', typeof data.qrCode, 'qrCode length:', data.qrCode?.length);
-      console.log('📱 Available sessions:', sessions.map(s => s.id));
-      
-      // Validar dados recebidos
-      if (!data || !data.sessionId || !data.qrCode) {
-        console.error('❌ Invalid QR code data received:', data);
-        return;
-      }
-      
-      // Tentar encontrar a sessão correspondente
-      let matchedSessionId: string | undefined = sessionIdMap.get(data.sessionId);
-      
-      // Se não encontrou, tentar remover prefixo whatsapp_
-      if (!matchedSessionId && data.sessionId.startsWith('whatsapp_')) {
-        const withoutPrefix = data.sessionId.replace(/^whatsapp_/, '');
-        matchedSessionId = sessionIdMap.get(withoutPrefix);
-        console.log('🔍 Tried without prefix:', withoutPrefix, 'found:', !!matchedSessionId);
-      }
-      
-      // Se ainda não encontrou, tentar adicionar prefixo whatsapp_
-      if (!matchedSessionId) {
-        const withPrefix = `whatsapp_${data.sessionId}`;
-        matchedSessionId = sessionIdMap.get(withPrefix);
-        console.log('🔍 Tried with prefix:', withPrefix, 'found:', !!matchedSessionId);
-      }
-      
-      // Se ainda não encontrou, usar o sessionId recebido diretamente
-      if (!matchedSessionId) {
-        // Tentar encontrar na lista de sessões
-        const foundSession = sessions.find(s => 
+      const statusHandler = (data: { sessionId: string; status: string; phoneNumber?: string; error?: string }) => {
+        const matchedSession = sessions.find(s => 
           s.id === data.sessionId || 
           s.id === `whatsapp_${data.sessionId}` || 
           `whatsapp_${s.id}` === data.sessionId
         );
-        if (foundSession) {
-          matchedSessionId = foundSession.id;
-          console.log('✅ Found session by direct match:', foundSession.id);
-        } else {
-          matchedSessionId = data.sessionId;
-          console.log('⚠️ Session not found, using received sessionId:', data.sessionId);
-        }
-      }
-      
-      // Sempre salvar o QR code com ambos os IDs (recebido e encontrado) para garantir que seja encontrado
-      const finalSessionId = matchedSessionId || data.sessionId;
-      console.log('💾 Saving QR code to Redux for session:', finalSessionId);
-      dispatch(setQRCode({ sessionId: finalSessionId, qrCode: data.qrCode }));
-      
-      // Também salvar com o sessionId original (caso seja diferente)
-      if (finalSessionId !== data.sessionId) {
-        console.log('📝 Also saving QR code with original sessionId:', data.sessionId);
-        dispatch(setQRCode({ sessionId: data.sessionId, qrCode: data.qrCode }));
-      }
-      
-      // Abrir dialog automaticamente quando QR code chegar
-      console.log('🎯 Opening QR code dialog automatically for session:', finalSessionId);
-      setSelectedSessionForQR(finalSessionId);
-      setQrDialogOpen(true);
-    };
-
-    // Handler genérico para Status que verifica todos os sessionIds possíveis
-    const statusHandler = (data: { sessionId: string; status: string; phoneNumber?: string; error?: string }) => {
-      console.log('📊 Status event received:', data.sessionId, 'status:', data.status);
-      
-      // Tentar encontrar a sessão correspondente
-      let matchedSessionId: string | undefined = sessionIdMap.get(data.sessionId);
-      
-      // Se não encontrou, tentar remover prefixo whatsapp_
-      if (!matchedSessionId && data.sessionId.startsWith('whatsapp_')) {
-        const withoutPrefix = data.sessionId.replace(/^whatsapp_/, '');
-        matchedSessionId = sessionIdMap.get(withoutPrefix);
-      }
-      
-      // Se ainda não encontrou, tentar adicionar prefixo whatsapp_
-      if (!matchedSessionId) {
-        const withPrefix = `whatsapp_${data.sessionId}`;
-        matchedSessionId = sessionIdMap.get(withPrefix);
-      }
-      
-      // Se encontrou correspondência, atualizar o status usando o ID do banco
-      if (matchedSessionId) {
-        console.log('✅ Status matched to session:', matchedSessionId);
-        dispatch(updateSessionStatus({
-          sessionId: matchedSessionId,
-          status: data.status,
-          phoneNumber: data.phoneNumber,
-          error: data.error,
-        }));
-
-        if (data.status === 'connected') {
-          dispatch(clearQRCode(matchedSessionId));
-        }
-      } else {
-        console.warn('⚠️ Status event received for unknown session:', data.sessionId);
-        // Mesmo assim, tentar usar o sessionId recebido
-        dispatch(updateSessionStatus({
-          sessionId: data.sessionId,
-          status: data.status,
-          phoneNumber: data.phoneNumber,
-          error: data.error,
-        }));
-      }
-    };
-
-    // Para cada sessão, escutar eventos específicos
-    sessions.forEach((session) => {
-      console.log(`📡 Registering listeners for session: ${session.id}`);
-      socket.on(`session:${session.id}:qr`, qrHandler);
-      socket.on(`session:${session.id}:status`, statusHandler);
-      
-      // Também escutar com prefixo whatsapp_ caso o backend use
-      socket.on(`session:whatsapp_${session.id}:qr`, qrHandler);
-      socket.on(`session:whatsapp_${session.id}:status`, statusHandler);
-
-      handlers.push(() => {
-        socket.off(`session:${session.id}:qr`, qrHandler);
-        socket.off(`session:${session.id}:status`, statusHandler);
-        socket.off(`session:whatsapp_${session.id}:qr`, qrHandler);
-        socket.off(`session:whatsapp_${session.id}:status`, statusHandler);
-      });
-    });
-    
-    console.log(`📡 Registered listeners for ${sessions.length} sessions`);
-    
-    // Adicionar um listener genérico usando onAny() para capturar TODOS os eventos
-    // Isso garante que eventos de QR code sejam capturados mesmo se os listeners específicos
-    // não estiverem registrados ainda ou se o nome do evento não corresponder exatamente
-    const onAnyHandler = (eventName: string, ...args: any[]) => {
-      console.log('🔍 Socket.IO event received via onAny:', eventName, 'args length:', args.length);
-      console.log('🔍 Args details:', args.map((arg, idx) => ({ index: idx, type: typeof arg, isObject: typeof arg === 'object', keys: typeof arg === 'object' ? Object.keys(arg) : 'N/A' })));
-      
-      // Verificar se é um evento de QR code
-      if (eventName.includes(':qr')) {
-        console.log('🔍 Event name contains :qr, processing...');
         
-        // O Socket.IO pode passar os dados de diferentes formas
-        // Tentar args[0] primeiro (formato mais comum)
-        let data = args[0];
-        
-        // Se args[0] não for um objeto, tentar args[1] ou procurar no array
-        if (!data || typeof data !== 'object') {
-          console.log('⚠️ args[0] is not an object, trying other args...');
-          for (let i = 0; i < args.length; i++) {
-            if (args[i] && typeof args[i] === 'object' && args[i].sessionId && args[i].qrCode) {
-              data = args[i];
-              console.log(`✅ Found QR code data in args[${i}]`);
-              break;
-            }
-          }
-        }
-        
-        if (data && typeof data === 'object') {
-          console.log('🔍 Data object keys:', Object.keys(data));
-          console.log('🔍 Data values:', { sessionId: data.sessionId, hasQrCode: !!data.qrCode, qrCodeType: typeof data.qrCode, qrCodeLength: data.qrCode?.length });
+        if (matchedSession) {
+          const matchedSessionId = matchedSession.id;
+          dispatch(updateSessionStatus({
+            sessionId: matchedSessionId,
+            status: data.status,
+            phoneNumber: data.phoneNumber,
+            error: data.error,
+          }));
           
-          if (data.sessionId && data.qrCode) {
-            console.log('✅ QR Code event validated, calling qrHandler');
-            qrHandler(data);
-          } else {
-            console.warn('⚠️ Event has :qr but missing sessionId or qrCode. sessionId:', !!data.sessionId, 'qrCode:', !!data.qrCode);
-            console.warn('⚠️ Full data object:', JSON.stringify(data, null, 2));
+          if (data.status === 'connected') {
+            dispatch(clearQRCode(matchedSessionId));
           }
-        } else {
-          console.warn('⚠️ Event has :qr but could not find valid data object in args');
-          console.warn('⚠️ All args:', args);
         }
-      }
-      
-      // Verificar se é um evento de status
-      if (eventName.includes(':status')) {
-        const data = args[0];
-        if (data && typeof data === 'object' && data.sessionId) {
-          console.log('📊 Status event caught by onAny:', eventName, 'sessionId:', data.sessionId);
-          statusHandler(data);
-        }
-      }
-    };
-    
-      console.log('📡 Registering onAny listener...');
-      socket.onAny(onAnyHandler);
-      
-      handlers.push(() => {
-        socket.offAny();
-      });
+      };
 
+      sessions.forEach((session) => {
+        socket.on(`session:${session.id}:qr`, qrHandler);
+        socket.on(`session:${session.id}:status`, statusHandler);
+        socket.on(`session:whatsapp_${session.id}:qr`, qrHandler);
+        socket.on(`session:whatsapp_${session.id}:status`, statusHandler);
+
+        handlers.push(() => {
+          socket.off(`session:${session.id}:qr`, qrHandler);
+          socket.off(`session:${session.id}:status`, statusHandler);
+          socket.off(`session:whatsapp_${session.id}:qr`, qrHandler);
+          socket.off(`session:whatsapp_${session.id}:status`, statusHandler);
+        });
+      });
+      
       return () => {
         handlers.forEach(cleanup => cleanup());
       };
     };
     
-    // Se já está conectado, registrar imediatamente
     if (socket.connected) {
-      registerAllListeners();
-      return () => {
-        // Cleanup será feito pelo registerAllListeners
-      };
+      const cleanup = registerAllListeners();
+      return cleanup;
     } else {
-      // Aguardar conexão e então registrar
-      console.warn('⚠️ WhatsAppSessionManagement: Socket not connected yet, waiting...');
       const connectHandler = () => {
-        console.log('✅ WhatsAppSessionManagement: Socket connected, registering listeners...');
         registerAllListeners();
       };
       socket.on('connect', connectHandler);
       
-      // Também tentar registrar após um pequeno delay (caso o evento 'connect' já tenha sido emitido)
       const timeoutId = setTimeout(() => {
         if (socket.connected) {
-          console.log('✅ Socket connected (timeout check), registering listeners...');
           registerAllListeners();
         }
       }, 1000);
@@ -333,10 +204,37 @@ const WhatsAppSessionManagement: React.FC = () => {
     }
   }, [socket, sessions, dispatch]);
 
+  // Monitorar mudanças no QR code e atualizar automaticamente
   useEffect(() => {
-    dispatch(fetchWhatsAppSessions() as any);
-    dispatch(fetchAgents(true) as any);
-  }, [dispatch]);
+    for (const sessionId in qrCodes) {
+      const session = sessions.find(s => 
+        s.id === sessionId || 
+        s.id === `whatsapp_${sessionId}` || 
+        `whatsapp_${s.id}` === sessionId
+      );
+      
+      if (session && (session.error || session.status === 'qr_required' || session.status === 'connecting')) {
+        const sessionIdToUse = session.id;
+        if (!qrDialogOpen || selectedSessionForQR !== sessionIdToUse) {
+          setSelectedSessionForQR(sessionIdToUse);
+          setQrDialogOpen(true);
+          break;
+        }
+      }
+    }
+  }, [qrCodes, sessions, qrDialogOpen, selectedSessionForQR]);
+
+  // Fechar modal automaticamente quando a sessão estiver conectada
+  useEffect(() => {
+    const selectedSession = selectedSessionForQR ? sessions.find(s => s.id === selectedSessionForQR) : null;
+    if (selectedSession && selectedSession.status === 'connected' && qrDialogOpen) {
+      setQrDialogOpen(false);
+      setSelectedSessionForQR(null);
+      if (selectedSessionForQR) {
+        dispatch(clearQRCode(selectedSessionForQR));
+      }
+    }
+  }, [sessions, qrDialogOpen, selectedSessionForQR, dispatch]);
 
   const handleOpenDialog = (session?: WhatsAppSession) => {
     if (session) {
@@ -372,7 +270,7 @@ const WhatsAppSessionManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.agentId) {
-      alert('Nome e Agente são obrigatórios');
+      showError('Nome e Agente são obrigatórios');
       return;
     }
 
@@ -386,17 +284,21 @@ const WhatsAppSessionManagement: React.FC = () => {
             isActive: formData.isActive,
           },
         }) as any);
+        showSuccess('Sessão atualizada com sucesso!');
       } else {
         await dispatch(createWhatsAppSession({
           name: formData.name,
           agentId: formData.agentId,
           sessionName: formData.sessionName || undefined,
         }) as any);
+        showSuccess('Sessão criada com sucesso!');
       }
       handleCloseDialog();
       dispatch(fetchWhatsAppSessions() as any);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving session:', error);
+      const errorMessage = error?.message || error?.toString() || 'Erro ao salvar sessão';
+      showError(`Erro ao salvar sessão: ${errorMessage}`);
     }
   };
 
@@ -404,9 +306,12 @@ const WhatsAppSessionManagement: React.FC = () => {
     if (window.confirm('Tem certeza que deseja excluir esta sessão?')) {
       try {
         await dispatch(deleteWhatsAppSession(id) as any);
+        showSuccess('Sessão excluída com sucesso!');
         dispatch(fetchWhatsAppSessions() as any);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting session:', error);
+        const errorMessage = error?.message || error?.toString() || 'Erro ao excluir sessão';
+        showError(`Erro ao excluir sessão: ${errorMessage}`);
       }
     }
   };
@@ -416,33 +321,37 @@ const WhatsAppSessionManagement: React.FC = () => {
       await dispatch(initializeWhatsAppSession(id) as any);
       setSelectedSessionForQR(id);
       setQrDialogOpen(true);
-    } catch (error) {
+      showInfo('Inicializando sessão... Aguarde o QR Code.');
+    } catch (error: any) {
       console.error('Error initializing session:', error);
-      alert('Erro ao inicializar sessão. Verifique se o agente está ativo.');
+      const errorMessage = error?.message || error?.toString() || 'Erro ao inicializar sessão';
+      showError(`Erro ao inicializar sessão: ${errorMessage}. Verifique se o agente está ativo.`);
     }
   };
 
   const handleClose = async (id: string) => {
     try {
       await dispatch(closeWhatsAppSession(id) as any);
+      showSuccess('Sessão desconectada com sucesso!');
       dispatch(fetchWhatsAppSessions() as any);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error closing session:', error);
+      const errorMessage = error?.message || error?.toString() || 'Erro ao desconectar sessão';
+      showError(`Erro ao desconectar sessão: ${errorMessage}`);
     }
   };
 
   const handleShowQR = async (id: string) => {
     const session = sessions.find(s => s.id === id);
     
-    // Se a sessão não está conectada e não está em processo de inicialização,
-    // inicializar automaticamente antes de mostrar o QR code
     if (session && session.status !== 'connected' && session.status !== 'connecting' && session.status !== 'qr_required') {
-      console.log('🔄 Session not initialized, initializing before showing QR code...');
       try {
         await dispatch(initializeWhatsAppSession(id) as any);
-      } catch (error) {
+        showInfo('Inicializando sessão... Aguarde o QR Code.');
+      } catch (error: any) {
         console.error('Error initializing session:', error);
-        alert('Erro ao inicializar sessão. Verifique se o agente está ativo.');
+        const errorMessage = error?.message || error?.toString() || 'Erro ao inicializar sessão';
+        showError(`Erro ao inicializar sessão: ${errorMessage}. Verifique se o agente está ativo.`);
         return;
       }
     }
@@ -486,15 +395,11 @@ const WhatsAppSessionManagement: React.FC = () => {
 
   const selectedSession = selectedSessionForQR ? sessions.find(s => s.id === selectedSessionForQR) : null;
   
-  // Buscar QR code usando o selectedSessionForQR ou tentar variações (com/sem prefixo whatsapp_)
-  // Também buscar em todas as chaves do qrCodes para encontrar correspondências
   const selectedSessionQR = selectedSessionForQR ? (() => {
-    // Tentar busca direta
     if (qrCodes[selectedSessionForQR]) {
       return qrCodes[selectedSessionForQR];
     }
     
-    // Tentar variações com/sem prefixo whatsapp_
     const withoutPrefix = selectedSessionForQR.startsWith('whatsapp_') 
       ? selectedSessionForQR.replace(/^whatsapp_/, '') 
       : null;
@@ -503,91 +408,41 @@ const WhatsAppSessionManagement: React.FC = () => {
       : null;
     
     if (withoutPrefix && qrCodes[withoutPrefix]) {
-      console.log('✅ Found QR code without prefix:', withoutPrefix);
       return qrCodes[withoutPrefix];
     }
     
     if (withPrefix && qrCodes[withPrefix]) {
-      console.log('✅ Found QR code with prefix:', withPrefix);
       return qrCodes[withPrefix];
     }
     
-    // Buscar em todas as chaves para encontrar correspondências parciais
     for (const key in qrCodes) {
       if (key === selectedSessionForQR || 
           key === withoutPrefix || 
           key === withPrefix ||
           key.includes(selectedSessionForQR) || 
           selectedSessionForQR.includes(key)) {
-        console.log('✅ Found QR code by partial match:', key);
         return qrCodes[key];
       }
     }
     
-    // Log para debug
-    console.log('⚠️ QR code not found for session:', selectedSessionForQR, 'available keys:', Object.keys(qrCodes));
     return null;
   })() : null;
 
-  // Monitorar mudanças no QR code e atualizar automaticamente
-  useEffect(() => {
-    // Verificar se há QR code disponível para alguma sessão
-    for (const sessionId in qrCodes) {
-      const session = sessions.find(s => 
-        s.id === sessionId || 
-        s.id === `whatsapp_${sessionId}` || 
-        `whatsapp_${s.id}` === sessionId
-      );
-      
-      // Se a sessão tem erro ou está aguardando QR code, abrir dialog automaticamente
-      if (session && (session.error || session.status === 'qr_required' || session.status === 'connecting')) {
-        const sessionIdToUse = session.id;
-        if (!qrDialogOpen || selectedSessionForQR !== sessionIdToUse) {
-          console.log('🎯 Auto-opening QR code dialog for session:', sessionIdToUse, 'status:', session.status, 'error:', session.error, 'qrCode available:', !!qrCodes[sessionId]);
-          setSelectedSessionForQR(sessionIdToUse);
-          setQrDialogOpen(true);
-          break; // Abrir apenas para a primeira sessão encontrada
-        }
-      }
-    }
-  }, [qrCodes, sessions, qrDialogOpen, selectedSessionForQR]);
-  
-  // Forçar atualização quando QR code chegar para a sessão selecionada
-  useEffect(() => {
-    if (selectedSessionForQR && qrCodes[selectedSessionForQR]) {
-      console.log('✅ QR code available for selected session:', selectedSessionForQR);
-      // Forçar re-render do componente
-    }
-  }, [qrCodes, selectedSessionForQR]);
-
-  // Fechar modal automaticamente quando a sessão estiver conectada
-  useEffect(() => {
-    if (selectedSession && selectedSession.status === 'connected' && qrDialogOpen) {
-      console.log('✅ Sessão conectada, fechando modal de QR Code');
-      const sessionIdToClear = selectedSessionForQR;
-      setQrDialogOpen(false);
-      setSelectedSessionForQR(null);
-      // Limpar QR code do Redux quando fechar
-      if (sessionIdToClear) {
-        dispatch(clearQRCode(sessionIdToClear));
-      }
-    }
-  }, [selectedSession?.status, qrDialogOpen, selectedSessionForQR, dispatch]);
-
-  if (loading && sessions.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Gerenciamento de Sessões WhatsApp
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Gerencie suas sessões WhatsApp e conecte seus agentes
+      </Typography>
+
+      {/* Seção de Gerenciamento de Sessões */}
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1">
-            Gerenciamento de Sessões WhatsApp
+          <Typography variant="h5" component="h2">
+            Gerenciamento de Sessões
           </Typography>
           <Button
             variant="contained"
@@ -604,51 +459,50 @@ const WhatsAppSessionManagement: React.FC = () => {
           </Alert>
         )}
 
-        <List>
-          {sessions.length === 0 ? (
-            <ListItem>
-              <ListItemText
-                primary="Nenhuma sessão cadastrada"
-                secondary="Clique em 'Nova Sessão' para criar uma sessão WhatsApp"
-              />
-            </ListItem>
-          ) : (
-            sessions.map((session) => {
+        {loading && sessions.length === 0 ? (
+          <ListSkeleton count={3} hasSecondary={true} hasAction={true} />
+        ) : !loading && sessions.length === 0 ? (
+          <EmptyState
+            icon={<WhatsAppIcon />}
+            title="Nenhuma sessão WhatsApp cadastrada"
+            description="Crie uma sessão WhatsApp para conectar seus agentes ao WhatsApp. Cada sessão permite que um agente interaja com usuários através do WhatsApp."
+            actionLabel="Criar Primeira Sessão"
+            onAction={() => handleOpenDialog()}
+            size="medium"
+          />
+        ) : (
+          <List>
+            {sessions.map((session) => {
               const agent = agents.find(a => a.id === session.agentId);
               const isConnected = session.status === 'connected';
               const isConnecting = session.status === 'connecting' || session.status === 'qr_required';
               const hasError = !!session.error;
               const hasQR = qrCodes[session.id] || session.qrCode;
               
-              // Determinar qual botão principal mostrar baseado no estado
-              // Unificamos Play/QR Code em um único botão que muda de ação
               const getMainActionButton = () => {
                 if (isConnected) {
-                  // Se conectado, mostrar botão de parar
                   return (
                     <IconButton
                       edge="end"
                       color="error"
                       onClick={() => handleClose(session.id)}
-                      title="Desconectar WhatsApp - Encerra a conexão com o WhatsApp"
+                      title="Desconectar WhatsApp"
                     >
                       <StopIcon />
                     </IconButton>
                   );
                 } else if (isConnecting && hasQR) {
-                  // Se está conectando e tem QR code, mostrar botão de QR code
                   return (
                     <IconButton
                       edge="end"
                       color="primary"
                       onClick={() => handleShowQR(session.id)}
-                      title="Ver QR Code - Escaneie com seu WhatsApp para conectar"
+                      title="Ver QR Code"
                     >
                       <QrCodeIcon />
                     </IconButton>
                   );
                 } else if (isConnecting && !hasQR) {
-                  // Se está conectando mas não tem QR code ainda, mostrar botão de loading
                   return (
                     <Box sx={{ position: 'relative', display: 'inline-flex' }}>
                       <IconButton
@@ -672,25 +526,23 @@ const WhatsAppSessionManagement: React.FC = () => {
                     </Box>
                   );
                 } else if (hasError) {
-                  // Se tem erro, mostrar botão de reiniciar
                   return (
                     <IconButton
                       edge="end"
                       color="warning"
                       onClick={() => handleInitialize(session.id)}
-                      title="Reconectar - Tenta conectar novamente e gerar novo QR Code"
+                      title="Reconectar"
                     >
                       <RefreshIcon />
                     </IconButton>
                   );
                 } else {
-                  // Se desconectado, mostrar botão de conectar
                   return (
                     <IconButton
                       edge="end"
                       color="primary"
                       onClick={() => handleInitialize(session.id)}
-                      title="Conectar WhatsApp - Inicia a conexão e mostra QR Code para escanear"
+                      title="Conectar WhatsApp"
                     >
                       <PlayIcon />
                     </IconButton>
@@ -710,7 +562,6 @@ const WhatsAppSessionManagement: React.FC = () => {
                             color={getStatusColor(session.status) as any}
                             size="small"
                           />
-                          {/* Removido chip "Ativa/Inativa" - redundante, o status já indica isso */}
                         </Box>
                       }
                       secondary={
@@ -748,10 +599,7 @@ const WhatsAppSessionManagement: React.FC = () => {
                     />
                     <ListItemSecondaryAction>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {/* Botão principal unificado (Play/QR Code/Stop) */}
                         {getMainActionButton()}
-                        
-                        {/* Botões secundários sempre visíveis */}
                         <IconButton
                           edge="end"
                           onClick={() => handleOpenDialog(session)}
@@ -775,9 +623,9 @@ const WhatsAppSessionManagement: React.FC = () => {
                   <Divider />
                 </React.Fragment>
               );
-            })
-          )}
-        </List>
+            })}
+          </List>
+        )}
 
         {/* Dialog para criar/editar sessão */}
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
@@ -848,14 +696,12 @@ const WhatsAppSessionManagement: React.FC = () => {
         <QRCodeDisplay
           open={qrDialogOpen}
           onClose={async () => {
-            // Se a sessão está sendo inicializada, cancelar a inicialização
             if (selectedSessionForQR && selectedSession && 
                 (selectedSession.status === 'connecting' || selectedSession.status === 'qr_required')) {
               try {
                 await dispatch(cancelWhatsAppSessionInitialization(selectedSessionForQR) as any);
-                console.log('✅ Initialization canceled for session:', selectedSessionForQR);
               } catch (error) {
-                console.error('❌ Error canceling initialization:', error);
+                console.error('Error canceling initialization:', error);
               }
             }
             
@@ -880,5 +726,5 @@ const WhatsAppSessionManagement: React.FC = () => {
   );
 };
 
-export default WhatsAppSessionManagement;
+export default WhatsAppManagement;
 

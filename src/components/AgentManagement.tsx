@@ -34,7 +34,6 @@ import {
   Add as AddIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
 import {
   fetchAgents,
@@ -49,6 +48,10 @@ import { fetchRules } from '../store/ruleSlice';
 import { Agent } from '../store/agentSlice';
 import { documentService, Document } from '../services/documentService';
 import { agentService } from '../services/agentService';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './EmptyState';
+import ListSkeleton from './ListSkeleton';
+import { Group as GroupIcon } from '@mui/icons-material';
 
 const LANGUAGES = [
   { value: 'pt-BR', label: 'Português (Brasil)' },
@@ -65,11 +68,11 @@ const STYLES = [
 
 const AgentManagement: React.FC = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { agents, loading, error } = useSelector((state: RootState) => state.agent);
   const { roles } = useSelector((state: RootState) => state.role);
   const { personalities } = useSelector((state: RootState) => state.personality);
   const { rules } = useSelector((state: RootState) => state.rule);
+  const { showSuccess, showError } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentOwners, setDocumentOwners] = useState<Record<string, string>>({}); // documentId -> agentId
   const [openDocumentDialog, setOpenDocumentDialog] = useState(false);
@@ -171,27 +174,36 @@ const AgentManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.roleId || !formData.personalityId) {
+      showError('Preencha todos os campos obrigatórios');
       return;
     }
 
     try {
       if (editingAgent) {
         await dispatch(updateAgent({ id: editingAgent.id, data: formData }) as any);
+        showSuccess('Agente atualizado com sucesso!');
       } else {
         await dispatch(createAgent(formData as any) as any);
+        showSuccess('Agente criado com sucesso!');
       }
       handleCloseDialog();
       dispatch(fetchAgents() as any);
     } catch (error: any) {
       const errorMessage = error?.message || error?.toString() || 'Erro ao salvar agente';
-      alert(`Erro ao salvar agente: ${errorMessage}`);
+      showError(`Erro ao salvar agente: ${errorMessage}`);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este agente?')) {
-      await dispatch(deleteAgent(id) as any);
-      dispatch(fetchAgents() as any);
+      try {
+        await dispatch(deleteAgent(id) as any);
+        showSuccess('Agente excluído com sucesso!');
+        dispatch(fetchAgents() as any);
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || 'Erro ao excluir agente';
+        showError(`Erro ao excluir agente: ${errorMessage}`);
+      }
     }
   };
 
@@ -240,10 +252,10 @@ const AgentManagement: React.FC = () => {
         await loadDocumentOwners(updatedDocuments);
       }
       handleCloseDocumentDialog();
-    } catch (error) {
-      console.error('Error saving document:', error);
-      alert('Erro ao salvar documento');
-    }
+      } catch (error) {
+        console.error('Error saving document:', error);
+        showError('Erro ao salvar documento');
+      }
   };
 
   const handleDeleteDocument = async (id: string) => {
@@ -263,7 +275,7 @@ const AgentManagement: React.FC = () => {
         setDocumentOwners(newOwners);
       } catch (error) {
         console.error('Error deleting document:', error);
-        alert('Erro ao excluir documento');
+        showError('Erro ao excluir documento');
       }
     }
   };
@@ -271,13 +283,6 @@ const AgentManagement: React.FC = () => {
   const selectedRole = roles.find((r) => r.id === formData.roleId);
   const selectedPersonality = personalities.find((p) => p.id === formData.personalityId);
 
-  if (loading && agents.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -286,36 +291,13 @@ const AgentManagement: React.FC = () => {
           <Typography variant="h4" component="h1">
             Gerenciamento de Agentes
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/roles')}
-            >
-              Roles
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/personalities')}
-            >
-              Personalidades
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/rules')}
-            >
-              Regras
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Novo Agente
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Novo Agente
+          </Button>
         </Box>
 
         {error && (
@@ -324,8 +306,20 @@ const AgentManagement: React.FC = () => {
           </Alert>
         )}
 
-        <List>
-          {agents.map((agent) => {
+        {loading && agents.length === 0 ? (
+          <ListSkeleton count={5} hasSecondary={true} hasAction={true} />
+        ) : !loading && agents.length === 0 ? (
+          <EmptyState
+            icon={<GroupIcon />}
+            title="Nenhum agente cadastrado"
+            description="Crie seu primeiro agente para começar a usar o sistema. Agentes são assistentes de IA configuráveis que podem interagir com usuários."
+            actionLabel="Criar Primeiro Agente"
+            onAction={() => handleOpenDialog()}
+            size="medium"
+          />
+        ) : (
+          <List>
+            {agents.map((agent) => {
             const agentRole = roles.find((r) => r.id === agent.roleId);
             const agentPersonality = personalities.find((p) => p.id === agent.personalityId);
             
@@ -375,11 +369,6 @@ const AgentManagement: React.FC = () => {
             );
           })}
         </List>
-
-        {agents.length === 0 && !loading && (
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
-            Nenhum agente cadastrado. Clique em "Novo Agente" para criar um.
-          </Typography>
         )}
       </Paper>
 
