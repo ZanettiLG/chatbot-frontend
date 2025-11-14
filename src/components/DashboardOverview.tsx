@@ -22,6 +22,7 @@ import {
   Build as BuildIcon,
   Settings as SettingsIcon,
   WhatsApp as WhatsAppIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { RootState } from '../store';
 import { fetchAgents } from '../store/agentSlice';
@@ -72,6 +73,14 @@ const DashboardOverview: React.FC = () => {
       icon: <HistoryIcon />,
       path: '/dashboard/history',
       color: '#757575',
+      size: 'small',
+    },
+    {
+      title: 'Estados de Inferência',
+      description: 'Visualize o processo de pensamento dos agentes',
+      icon: <PsychologyIcon />,
+      path: '/dashboard/inference',
+      color: '#9c27b0',
       size: 'small',
     },
     {

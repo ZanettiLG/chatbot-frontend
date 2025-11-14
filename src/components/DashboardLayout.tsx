@@ -23,14 +23,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     breadcrumbs.push({ label: 'Dashboard', path: '/dashboard' });
 
     const routeLabels: Record<string, string> = {
-      agents: 'Agentes',
       roles: 'Roles',
       rules: 'Regras',
-      personalities: 'Personalidades',
+      agents: 'Agentes',
       tools: 'Ferramentas',
-      history: 'Histórico de Conversas',
-      settings: 'Configurações',
       whatsapp: 'WhatsApp',
+      settings: 'Configurações',
+      personalities: 'Personalidades',
+      history: 'Histórico de Conversas',
     };
 
     // Pular o primeiro elemento se for 'dashboard' (já adicionado acima)

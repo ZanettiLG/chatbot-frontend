@@ -13,6 +13,7 @@ export interface Agent {
   systemPrompt?: string;
   knowledgeIds: string[];
   isActive: boolean;
+  enableDialecticReasoning: boolean;
   createdAt: string;
   updatedAt: string;
   metadata?: Record<string, any>;

@@ -25,6 +25,7 @@ import {
   Build as BuildIcon,
   Settings as SettingsIcon,
   WhatsApp as WhatsAppIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 240;
@@ -41,6 +42,7 @@ const menuItems: MenuItem[] = [
   // CORE
   { label: 'Conversar', icon: <ChatBubbleIcon />, path: '/chat', section: 'CORE' },
   { label: 'Histórico de Conversas', icon: <HistoryIcon />, path: '/dashboard/history', section: 'CORE' },
+  { label: 'Estados de Inferência', icon: <PsychologyIcon />, path: '/dashboard/inference', section: 'CORE' },
   // AGENTES
   { label: 'Agentes', icon: <GroupIcon />, path: '/dashboard/agents', section: 'AGENTES' },
   { label: 'Personalidades', icon: <SentimentSatisfiedIcon />, path: '/dashboard/personalities', section: 'AGENTES' },

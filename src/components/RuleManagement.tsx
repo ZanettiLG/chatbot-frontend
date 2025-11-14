@@ -30,6 +30,8 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   Rule as RuleIcon,
+  ExpandMore as ExpandMoreIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { RootState } from '../store';
 import {
@@ -64,6 +66,16 @@ const RuleManagement: React.FC = () => {
     prompt: '',
     category: 'comunicação',
     isActive: true,
+    dialecticRules: {
+      general: [] as string[],
+      intentions: [] as string[],
+      actions: [] as string[],
+    },
+  });
+  const [dialecticRuleInput, setDialecticRuleInput] = useState({
+    general: '',
+    intentions: '',
+    actions: '',
   });
 
   useEffect(() => {
@@ -82,12 +94,23 @@ const RuleManagement: React.FC = () => {
   const handleOpenDialog = (rule?: Rule) => {
     if (rule) {
       setEditingRule(rule);
+      const dialecticRules = rule.metadata?.dialecticRules || {
+        general: [],
+        intentions: [],
+        actions: [],
+      };
       setFormData({
         name: rule.name,
         description: rule.description,
         prompt: rule.prompt,
         category: rule.category,
         isActive: rule.isActive,
+        dialecticRules,
+      });
+      setDialecticRuleInput({
+        general: Array.isArray(dialecticRules.general) ? dialecticRules.general.join('\n') : '',
+        intentions: Array.isArray(dialecticRules.intentions) ? dialecticRules.intentions.join(', ') : '',
+        actions: Array.isArray(dialecticRules.actions) ? dialecticRules.actions.join(', ') : '',
       });
     } else {
       setEditingRule(null);
@@ -97,6 +120,16 @@ const RuleManagement: React.FC = () => {
         prompt: '',
         category: 'comunicação',
         isActive: true,
+        dialecticRules: {
+          general: [],
+          intentions: [],
+          actions: [],
+        },
+      });
+      setDialecticRuleInput({
+        general: '',
+        intentions: '',
+        actions: '',
       });
     }
     setOpenDialog(true);
@@ -109,11 +142,38 @@ const RuleManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
+      // Processar regras dialéticas
+      const dialecticRules = {
+        general: dialecticRuleInput.general
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0),
+        intentions: dialecticRuleInput.intentions
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0),
+        actions: dialecticRuleInput.actions
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0),
+      };
+
+      const submitData = {
+        ...formData,
+        metadata: {
+          dialecticRules: Object.keys(dialecticRules).some(
+            (key) => dialecticRules[key as keyof typeof dialecticRules].length > 0
+          )
+            ? dialecticRules
+            : undefined,
+        },
+      };
+
       if (editingRule) {
-        await dispatch(updateRule({ id: editingRule.id, data: formData }) as any);
+        await dispatch(updateRule({ id: editingRule.id, data: submitData }) as any);
         showSuccess('Regra atualizada com sucesso!');
       } else {
-        await dispatch(createRule(formData as any) as any);
+        await dispatch(createRule(submitData as any) as any);
         showSuccess('Regra criada com sucesso!');
       }
       handleCloseDialog();
@@ -271,6 +331,57 @@ const RuleManagement: React.FC = () => {
               }
               label="Ativo"
             />
+
+            <Divider sx={{ my: 2 }} />
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PsychologyIcon />
+                  <Typography variant="subtitle1">Regras Dialéticas (Opcional)</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Configure regras específicas para o raciocínio dialético. Essas regras serão usadas quando o agente tiver raciocínio dialético habilitado.
+                  </Typography>
+
+                  <TextField
+                    label="Regras Gerais"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    value={dialecticRuleInput.general}
+                    onChange={(e) => setDialecticRuleInput({ ...dialecticRuleInput, general: e.target.value })}
+                    placeholder="Uma regra por linha. Ex:&#10;Toda intenção deve ser testada antes de agir.&#10;Se houver dúvida, formule uma antítese antes da resposta final."
+                    helperText="Regras gerais de raciocínio dialético (uma por linha)"
+                  />
+
+                  <TextField
+                    label="Intenções Possíveis"
+                    fullWidth
+                    value={dialecticRuleInput.intentions}
+                    onChange={(e) => setDialecticRuleInput({ ...dialecticRuleInput, intentions: e.target.value })}
+                    placeholder="pedido_de_produto, pedido_de_foto, pedido_de_preço, confirmação_de_compra, reclamação"
+                    helperText="Lista de intenções possíveis separadas por vírgula"
+                  />
+
+                  <TextField
+                    label="Ações Disponíveis"
+                    fullWidth
+                    value={dialecticRuleInput.actions}
+                    onChange={(e) => setDialecticRuleInput({ ...dialecticRuleInput, actions: e.target.value })}
+                    placeholder="consultar_estoque, buscar_foto, pedir_confirmação, oferecer_alternativas, acionar_vendedor"
+                    helperText="Lista de ações disponíveis separadas por vírgula"
+                  />
+
+                  <FormHelperText>
+                    Essas regras serão combinadas com outras regras dialéticas de outras Rules ativas do agente.
+                  </FormHelperText>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         </DialogContent>
         <DialogActions>

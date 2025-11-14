@@ -12,6 +12,7 @@ export interface Agent {
   systemPrompt?: string;
   knowledgeIds: string[];
   isActive: boolean;
+  enableDialecticReasoning: boolean;
   createdAt: string;
   updatedAt: string;
   metadata?: Record<string, any>;
@@ -27,6 +28,7 @@ export interface CreateAgentData {
   style: string;
   systemPrompt?: string;
   knowledgeIds?: string[];
+  enableDialecticReasoning?: boolean;
   metadata?: Record<string, any>;
 }
 
@@ -41,6 +43,7 @@ export interface UpdateAgentData {
   systemPrompt?: string;
   knowledgeIds?: string[];
   isActive?: boolean;
+  enableDialecticReasoning?: boolean;
   metadata?: Record<string, any>;
 }
 

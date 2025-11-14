@@ -23,6 +23,7 @@ const ToolManagement = lazy(() => import('./components/ToolManagement'));
 const UnifiedChatInterface = lazy(() => import('./components/UnifiedChatInterface'));
 const EngineStatus = lazy(() => import('./components/EngineStatus'));
 const WhatsAppManagement = lazy(() => import('./components/WhatsAppManagement'));
+const InferenceManagement = lazy(() => import('./components/InferenceManagement'));
 
 const LoadingFallback: React.FC = () => (
   <Box
@@ -61,7 +62,6 @@ const App: React.FC = () => {
             {/* Rotas de Chat (sem sidebar) */}
             <Route path="/" element={<ChatInterface />} />
             <Route path="/chat" element={<ChatInterface />} />
-            
             {/* Rotas do Dashboard (com sidebar) */}
             <Route
               path="/dashboard"
@@ -147,6 +147,16 @@ const App: React.FC = () => {
                 <DashboardLayout>
                   <Suspense fallback={<LoadingFallback />}>
                     <WhatsAppManagement />
+                  </Suspense>
+                </DashboardLayout>
+              }
+            />
+            <Route
+              path="/dashboard/inference"
+              element={
+                <DashboardLayout>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <InferenceManagement />
                   </Suspense>
                 </DashboardLayout>
               }

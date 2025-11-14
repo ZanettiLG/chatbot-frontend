@@ -25,6 +25,7 @@ import {
   Phone as PhoneIcon,
   Chat as ChatIcon,
   Archive as ArchiveIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { RootState } from '../store';
 import {
@@ -40,6 +41,8 @@ import { Conversation } from '../services/conversationService';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { MessageProtocol } from '../engines/types';
 import MarkdownMessage from './MarkdownMessage';
+import InferenceStateView from './InferenceStateView';
+import { inferenceService, InferenceState } from '../services/inferenceService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -70,6 +73,8 @@ const UnifiedChatInterface: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [latestInference, setLatestInference] = useState<InferenceState | null>(null);
+  const [showInference, setShowInference] = useState(false);
 
   const selectedConversation = conversations.find((c) => c.id === selectedConversationId);
   const currentMessages = selectedConversationId
@@ -84,8 +89,29 @@ const UnifiedChatInterface: React.FC = () => {
     if (selectedConversationId) {
       dispatch(selectConversation(selectedConversationId) as any);
       dispatch(fetchConversationMessages({ conversationId: selectedConversationId, limit: 50 }) as any);
+      loadLatestInference(selectedConversationId);
     }
   }, [selectedConversationId, dispatch]);
+
+  // Atualizar inferência quando novas mensagens chegarem
+  useEffect(() => {
+    if (selectedConversationId && currentMessages.length > 0) {
+      const lastMessage = currentMessages[currentMessages.length - 1];
+      if (lastMessage.source === 'system') {
+        // Se a última mensagem é do sistema (resposta da IA), buscar inferência
+        loadLatestInference(selectedConversationId);
+      }
+    }
+  }, [currentMessages, selectedConversationId]);
+
+  const loadLatestInference = async (sessionId: string) => {
+    try {
+      const inference = await inferenceService.getLatest(sessionId);
+      setLatestInference(inference);
+    } catch (error) {
+      console.error('Error loading inference:', error);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -291,20 +317,39 @@ const UnifiedChatInterface: React.FC = () => {
         {selectedConversation ? (
           <>
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Avatar sx={{ bgcolor: getProviderColor(selectedConversation.provider) + '.main' }}>
-                  {getProviderIcon(selectedConversation.provider)}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6">
-                    {selectedConversation.contactName || selectedConversation.contactIdentifier}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {selectedConversation.provider} • {selectedConversation.messageCount} mensagens
-                  </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar sx={{ bgcolor: getProviderColor(selectedConversation.provider) + '.main' }}>
+                    {getProviderIcon(selectedConversation.provider)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6">
+                      {selectedConversation.contactName || selectedConversation.contactIdentifier}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {selectedConversation.provider} • {selectedConversation.messageCount} mensagens
+                    </Typography>
+                  </Box>
                 </Box>
+                {latestInference && (
+                  <Tooltip title={showInference ? 'Ocultar estado de pensamento' : 'Mostrar estado de pensamento'}>
+                    <IconButton
+                      onClick={() => setShowInference(!showInference)}
+                      color={showInference ? 'primary' : 'default'}
+                    >
+                      <PsychologyIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
             </Box>
+
+            {/* Visualização do Estado de Inferência */}
+            {showInference && latestInference && (
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+                <InferenceStateView inferenceState={latestInference} compact />
+              </Box>
+            )}
 
             <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
               <List>

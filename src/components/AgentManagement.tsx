@@ -41,11 +41,11 @@ import {
   updateAgent,
   deleteAgent,
   clearError,
+  type Agent,
 } from '../store/agentSlice';
 import { fetchRoles } from '../store/roleSlice';
 import { fetchPersonalities } from '../store/personalitySlice';
 import { fetchRules } from '../store/ruleSlice';
-import { Agent } from '../store/agentSlice';
 import { documentService, Document } from '../services/documentService';
 import { agentService } from '../services/agentService';
 import { useToast } from '../hooks/useToast';
@@ -95,6 +95,7 @@ const AgentManagement: React.FC = () => {
     systemPrompt: '',
     knowledgeIds: [] as string[],
     isActive: true,
+    enableDialecticReasoning: false,
   });
 
   useEffect(() => {
@@ -134,18 +135,23 @@ const AgentManagement: React.FC = () => {
 
   const handleOpenDialog = async (agent?: Agent) => {
     if (agent) {
-      setEditingAgent(agent);
+      // Buscar o agente mais recente do estado Redux para garantir que temos os dados atualizados
+      // Isso garante que se o agente foi atualizado recentemente, pegamos a versão mais recente
+      const latestAgent = agents.find(a => a.id === agent.id) || agent;
+      
+      setEditingAgent(latestAgent);
       setFormData({
-        name: agent.name,
-        description: agent.description,
-        roleId: agent.roleId,
-        personalityId: agent.personalityId,
-        ruleIds: agent.ruleIds || [],
-        language: agent.language || 'pt-BR',
-        style: agent.style || 'formal',
-        systemPrompt: agent.systemPrompt || '',
-        knowledgeIds: agent.knowledgeIds || [],
-        isActive: agent.isActive,
+        name: latestAgent.name,
+        description: latestAgent.description,
+        roleId: latestAgent.roleId,
+        personalityId: latestAgent.personalityId,
+        ruleIds: latestAgent.ruleIds || [],
+        language: latestAgent.language || 'pt-BR',
+        style: latestAgent.style || 'formal',
+        systemPrompt: latestAgent.systemPrompt || '',
+        knowledgeIds: latestAgent.knowledgeIds || [],
+        isActive: latestAgent.isActive,
+        enableDialecticReasoning: latestAgent.enableDialecticReasoning ?? false,
       });
     } else {
       setEditingAgent(null);
@@ -160,6 +166,7 @@ const AgentManagement: React.FC = () => {
         systemPrompt: '',
         knowledgeIds: [],
         isActive: true,
+        enableDialecticReasoning: false,
       });
     }
     // Carregar donos dos documentos quando abrir o diálogo
@@ -180,14 +187,32 @@ const AgentManagement: React.FC = () => {
 
     try {
       if (editingAgent) {
-        await dispatch(updateAgent({ id: editingAgent.id, data: formData }) as any);
-        showSuccess('Agente atualizado com sucesso!');
+        const result = await dispatch(updateAgent({ id: editingAgent.id, data: formData }) as any);
+        
+        // Verificar se a atualização foi bem-sucedida
+        if (updateAgent.fulfilled.match(result)) {
+          console.log('✅ Agente atualizado:', result.payload);
+          console.log('✅ enableDialecticReasoning:', result.payload.enableDialecticReasoning);
+          showSuccess('Agente atualizado com sucesso!');
+          handleCloseDialog();
+          // Recarregar a lista após um pequeno delay para garantir que o backend processou
+          setTimeout(() => {
+            dispatch(fetchAgents() as any);
+          }, 100);
+        } else {
+          console.error('❌ Falha ao atualizar agente:', result);
+          throw new Error('Falha ao atualizar agente');
+        }
       } else {
-        await dispatch(createAgent(formData as any) as any);
-        showSuccess('Agente criado com sucesso!');
+        const result = await dispatch(createAgent(formData as any) as any);
+        
+        if (createAgent.fulfilled.match(result)) {
+          showSuccess('Agente criado com sucesso!');
+          handleCloseDialog();
+        } else {
+          throw new Error('Falha ao criar agente');
+        }
       }
-      handleCloseDialog();
-      dispatch(fetchAgents() as any);
     } catch (error: any) {
       const errorMessage = error?.message || error?.toString() || 'Erro ao salvar agente';
       showError(`Erro ao salvar agente: ${errorMessage}`);
@@ -354,6 +379,14 @@ const AgentManagement: React.FC = () => {
                         size="small"
                         color={agent.isActive ? 'success' : 'default'}
                       />
+                      {agent.enableDialecticReasoning && (
+                        <Chip
+                          label="Raciocínio Dialético"
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                        />
+                      )}
                     </Box>
                   </Box>
                   <ListItemSecondaryAction>
@@ -635,6 +668,19 @@ const AgentManagement: React.FC = () => {
               }
               label="Ativo"
             />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.enableDialecticReasoning}
+                  onChange={(e) => setFormData({ ...formData, enableDialecticReasoning: e.target.checked })}
+                />
+              }
+              label="Raciocínio Dialético"
+            />
+            <FormHelperText>
+              Quando habilitado, o agente usa raciocínio dialético (tese → antítese → síntese) para processar mensagens
+            </FormHelperText>
           </Box>
         </DialogContent>
         <DialogActions>
