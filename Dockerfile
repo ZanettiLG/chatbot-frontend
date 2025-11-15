@@ -15,8 +15,9 @@ ARG VITE_WS_URL=ws://localhost:3030
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 
-# Copiar arquivos de dependências
+# Copiar arquivos de dependências e configuração
 COPY package*.json ./
+COPY tsconfig*.json ./
 
 # Instalar dependências
 RUN npm ci
@@ -33,9 +34,9 @@ FROM nginx:alpine
 # Copiar arquivos buildados do stage anterior
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copiar configuração customizada do Nginx (opcional)
-# Se você tiver uma configuração customizada, descomente a linha abaixo
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remover configuração padrão e copiar configuração customizada do Nginx para SPA routing
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expor porta 80
 EXPOSE 80

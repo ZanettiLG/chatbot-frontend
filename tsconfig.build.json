@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Desabilitar verificações de código não utilizado para build de produção
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    // Manter outras verificações importantes
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src"]
+}
+

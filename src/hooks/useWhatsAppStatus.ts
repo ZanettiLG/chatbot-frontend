@@ -11,6 +11,7 @@ export const useWhatsAppStatus = (sessionId?: string) => {
 
   useEffect(() => {
     // Conectar ao namespace do WhatsApp Status
+    // Socket.IO adiciona automaticamente /socket.io/, então usar apenas a URL base
     const socket = io(`${config.wsUrl}/whatsapp-status`, {
       query: sessionId ? { sessionId } : {},
       transports: ['websocket', 'polling'],
