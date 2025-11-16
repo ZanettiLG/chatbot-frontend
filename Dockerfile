@@ -8,8 +8,8 @@ RUN apk add --no-cache python3 make g++
 
 # Argumentos de build para variáveis VITE_*
 # Essas variáveis são incorporadas no build e não podem ser alteradas depois
-ARG VITE_API_URL=http://localhost:3030
-ARG VITE_WS_URL=ws://localhost:3030
+ARG VITE_API_URL=/api
+ARG VITE_WS_URL=/
 
 # Definir como variáveis de ambiente para o build
 ENV VITE_API_URL=$VITE_API_URL
