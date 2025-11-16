@@ -1,25 +1,21 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Chip,
-  Switch,
-  FormControlLabel,
-  Divider,
-} from '@mui/material';
-import {
-  Wifi as WifiIcon,
-  WifiOff as WifiOffIcon,
-  Storage as StorageIcon,
-  CloudQueue as CloudQueueIcon,
-  Settings as SettingsIcon,
-  Psychology as PsychologyIcon,
-  WhatsApp as WhatsAppIcon,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Divider from '@mui/material/Divider';
+import WifiIcon from '@mui/icons-material/Wifi';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
+import StorageIcon from '@mui/icons-material/Storage';
+import CloudQueueIcon from '@mui/icons-material/CloudQueue';
+import SettingsIcon from '@mui/icons-material/Settings';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { RootState } from '../store';
 import { updateEngineStatus } from '../store/engineSlice';
 import { useWebSocket } from '../hooks/useWebSocket';

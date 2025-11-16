@@ -1,5 +1,9 @@
 import React from 'react';
-import { Box, Skeleton, List, ListItem, ListItemText } from '@mui/material';
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
 
 interface ListSkeletonProps {
   count?: number;

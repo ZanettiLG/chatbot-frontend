@@ -1,7 +1,11 @@
 import React from 'react';
-import { Box, Breadcrumbs, Link, Typography, Fade } from '@mui/material';
+import Box from '@mui/material/Box';
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
+import Fade from '@mui/material/Fade';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DashboardSidebar from './DashboardSidebar';
 
 interface DashboardLayoutProps {

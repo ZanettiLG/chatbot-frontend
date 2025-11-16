@@ -1,21 +1,17 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  BottomNavigation,
-  BottomNavigationAction,
-  Paper,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
-import {
-  Chat as ChatIcon,
-  Settings as SettingsIcon,
-  Person as PersonIcon,
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon,
-  Build as BuildIcon,
-} from '@mui/icons-material';
+import BottomNavigation from '@mui/material/BottomNavigation';
+import BottomNavigationAction from '@mui/material/BottomNavigationAction';
+import Paper from '@mui/material/Paper';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import ChatIcon from '@mui/icons-material/Chat';
+import SettingsIcon from '@mui/icons-material/Settings';
+import PersonIcon from '@mui/icons-material/Person';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import BuildIcon from '@mui/icons-material/Build';
 import { RootState } from '../store';
 import { setTheme } from '../store/uiSlice';
 

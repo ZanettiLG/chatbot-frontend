@@ -1,28 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Tabs,
-  Tab,
-  IconButton,
-  Tooltip,
-  Menu,
-  MenuItem,
-  Avatar,
-  Box,
-} from '@mui/material';
-import {
-  ChatBubble as ChatBubbleIcon,
-  Dashboard as DashboardIcon,
-  SmartToy as SmartToyIcon,
-  LightMode as LightModeIcon,
-  DarkMode as DarkModeIcon,
-  AccountCircle as AccountCircleIcon,
-  Settings as SettingsIcon,
-} from '@mui/icons-material';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { RootState } from '../store';
 import { setTheme } from '../store/uiSlice';
 

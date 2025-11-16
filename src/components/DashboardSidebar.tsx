@@ -1,32 +1,28 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Tooltip,
-  Box,
-  Typography,
-  Toolbar,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
-import {
-  ChatBubble as ChatBubbleIcon,
-  History as HistoryIcon,
-  Group as GroupIcon,
-  SentimentSatisfied as SentimentSatisfiedIcon,
-  AssignmentInd as AssignmentIndIcon,
-  Rule as RuleIcon,
-  Build as BuildIcon,
-  Settings as SettingsIcon,
-  WhatsApp as WhatsAppIcon,
-  Psychology as PsychologyIcon,
-} from '@mui/icons-material';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
+import Tooltip from '@mui/material/Tooltip';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Toolbar from '@mui/material/Toolbar';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import HistoryIcon from '@mui/icons-material/History';
+import GroupIcon from '@mui/icons-material/Group';
+import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import RuleIcon from '@mui/icons-material/Rule';
+import BuildIcon from '@mui/icons-material/Build';
+import SettingsIcon from '@mui/icons-material/Settings';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 
 const DRAWER_WIDTH = 240;
 const DRAWER_WIDTH_COLLAPSED = 64;

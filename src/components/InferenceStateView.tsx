@@ -1,26 +1,22 @@
 import React from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-} from '@mui/material';
-import {
-  ExpandMore as ExpandMoreIcon,
-  Psychology as PsychologyIcon,
-  Lightbulb as LightbulbIcon,
-  Warning as WarningIcon,
-  CheckCircle as CheckCircleIcon,
-  PlayArrow as PlayArrowIcon,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { InferenceState } from '../services/inferenceService';
 
 interface InferenceStateViewProps {

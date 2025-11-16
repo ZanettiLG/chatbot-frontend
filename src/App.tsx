@@ -1,7 +1,9 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline, Box, CircularProgress } from '@mui/material';
+import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useSelector } from 'react-redux';
 import { RootState } from './store';
 import { theme, darkTheme } from './styles/theme';
@@ -62,6 +64,7 @@ const App: React.FC = () => {
             {/* Rotas de Chat (sem sidebar) */}
             <Route path="/" element={<ChatInterface />} />
             <Route path="/chat" element={<ChatInterface />} />
+            <Route path="/chat/:agentId" element={<ChatInterface />} />
             {/* Rotas do Dashboard (com sidebar) */}
             <Route
               path="/dashboard"

@@ -1,28 +1,24 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Chip,
-  List,
-  ListItem,
-  Avatar,
-  Divider,
-  IconButton,
-  Tooltip,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-} from '@mui/material';
-import {
-  Send as SendIcon,
-  AttachFile as AttachFileIcon,
-  EmojiEmotions as EmojiIcon,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import Avatar from '@mui/material/Avatar';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import SendIcon from '@mui/icons-material/Send';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import EmojiIcon from '@mui/icons-material/EmojiEmotions';
 import { RootState } from '../store';
 import { addMessage } from '../store/chatSlice';
 import { Message } from '../store/chatSlice';
@@ -32,9 +28,11 @@ import { selectAgent, fetchAgents } from '../store/agentSlice';
 import { fetchRoles } from '../store/roleSlice';
 import { fetchPersonalities } from '../store/personalitySlice';
 import MarkdownMessage from './MarkdownMessage';
+import { useParams } from 'react-router-dom';
 
 const ChatInterface: React.FC = () => {
   const dispatch = useDispatch();
+  const { agentId } = useParams();
   const { messages, isConnected, currentEngine } = useSelector((state: RootState) => state.chat);
   const { agents, selectedAgentId } = useSelector((state: RootState) => state.agent);
   const { roles } = useSelector((state: RootState) => state.role);
@@ -92,6 +90,12 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (agentId) {
+      dispatch(selectAgent(agentId) as any);
+    }
+  }, [agentId, dispatch]);
 
   // Carregar agentes, roles e personalidades ao montar componente
   useEffect(() => {

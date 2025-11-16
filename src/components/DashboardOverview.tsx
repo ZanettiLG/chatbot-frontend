@@ -1,29 +1,25 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  CardActionArea,
-  Typography,
-  Avatar,
-  Button,
-  Paper,
-} from '@mui/material';
-import {
-  ChatBubble as ChatBubbleIcon,
-  History as HistoryIcon,
-  Group as GroupIcon,
-  SentimentSatisfied as SentimentSatisfiedIcon,
-  AssignmentInd as AssignmentIndIcon,
-  Rule as RuleIcon,
-  Build as BuildIcon,
-  Settings as SettingsIcon,
-  WhatsApp as WhatsAppIcon,
-  Psychology as PsychologyIcon,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActionArea from '@mui/material/CardActionArea';
+import Typography from '@mui/material/Typography';
+import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import HistoryIcon from '@mui/icons-material/History';
+import GroupIcon from '@mui/icons-material/Group';
+import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import RuleIcon from '@mui/icons-material/Rule';
+import BuildIcon from '@mui/icons-material/Build';
+import SettingsIcon from '@mui/icons-material/Settings';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import { RootState } from '../store';
 import { fetchAgents } from '../store/agentSlice';
 

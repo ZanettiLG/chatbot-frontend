@@ -1,32 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemButton,
-  Chip,
-  Divider,
-  Tabs,
-  Tab,
-  Avatar,
-  IconButton,
-  Tooltip,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
-import {
-  Send as SendIcon,
-  Phone as PhoneIcon,
-  Chat as ChatIcon,
-  Archive as ArchiveIcon,
-  Psychology as PsychologyIcon,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemButton from '@mui/material/ListItemButton';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
+import SendIcon from '@mui/icons-material/Send';
+import PhoneIcon from '@mui/icons-material/Phone';
+import ChatIcon from '@mui/icons-material/Chat';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import { RootState } from '../store';
 import {
   fetchConversations,
