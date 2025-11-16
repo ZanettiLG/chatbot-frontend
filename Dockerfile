@@ -15,6 +15,9 @@ ARG VITE_WS_URL=/
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 
+# Aumentar limite de memória do Node.js para evitar "heap out of memory" durante o build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Copiar arquivos de dependências e configuração
 COPY package*.json ./
 COPY tsconfig*.json ./
