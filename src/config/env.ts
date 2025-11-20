@@ -21,11 +21,11 @@ const getApiUrl = (): string => {
 // Função para obter URL do WebSocket (resolvida em runtime)
 // Socket.IO precisa de URL completa (com protocolo e host)
 const getWsUrl = (): string => {
-  // Em runtime, sempre construir URL completa baseada no domínio atual
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
-  }
+  // // Em runtime, sempre construir URL completa baseada no domínio atual
+  // if (typeof window !== 'undefined') {
+  //   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  //   return `${protocol}//${window.location.host}`;
+  // }
   
   // Build time: usar variável de ambiente ou fallback
   const envUrl = import.meta.env.VITE_WS_URL;

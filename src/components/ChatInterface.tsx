@@ -6,10 +6,6 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import Avatar from '@mui/material/Avatar';
-import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Select from '@mui/material/Select';
@@ -27,8 +23,14 @@ import { MessageProtocol } from '../engines/types';
 import { selectAgent, fetchAgents } from '../store/agentSlice';
 import { fetchRoles } from '../store/roleSlice';
 import { fetchPersonalities } from '../store/personalitySlice';
-import MarkdownMessage from './MarkdownMessage';
 import { useParams } from 'react-router-dom';
+import Drawer from '@mui/material/Drawer';
+import Badge from '@mui/material/Badge';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import CloseIcon from '@mui/icons-material/Close';
+import { fetchConversationState } from '../store/conversationStateSlice';
+import ConversationStatePanel from './ConversationStatePanel';
+import MessageWithInference from './MessageWithInference';
 
 const ChatInterface: React.FC = () => {
   const dispatch = useDispatch();
@@ -37,7 +39,11 @@ const ChatInterface: React.FC = () => {
   const { agents, selectedAgentId } = useSelector((state: RootState) => state.agent);
   const { roles } = useSelector((state: RootState) => state.role);
   const { personalities } = useSelector((state: RootState) => state.personality);
+  const { currentState: conversationState, loading: conversationStateLoading } = useSelector(
+    (state: RootState) => state.conversationState
+  );
   const [inputMessage, setInputMessage] = useState('');
+  const [goapPanelOpen, setGoapPanelOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Handler customizado para processar mensagens de chat
@@ -104,17 +110,48 @@ const ChatInterface: React.FC = () => {
     dispatch(fetchPersonalities({ activeOnly: true }) as any);
   }, [dispatch]);
 
+  // Polling para atualizar ConversationState
+  useEffect(() => {
+    if (!goapPanelOpen || !selectedAgentId) return;
+
+    // Usar selectedAgentId como sessionId temporário
+    // Em produção, isso deveria vir do backend ou ser persistido
+    const sessionId = selectedAgentId || `session_${Date.now()}`;
+    
+    const fetchState = () => {
+      dispatch(fetchConversationState(sessionId) as any);
+    };
+
+    // Buscar imediatamente
+    fetchState();
+
+    // Polling a cada 5 segundos
+    const interval = setInterval(fetchState, 5000);
+
+    return () => clearInterval(interval);
+  }, [goapPanelOpen, selectedAgentId, dispatch]);
+
+  // Atualizar quando nova mensagem chegar
+  useEffect(() => {
+    if (goapPanelOpen && selectedAgentId && messages.length > 0) {
+      const sessionId = selectedAgentId || `session_${Date.now()}`;
+      dispatch(fetchConversationState(sessionId) as any);
+    }
+  }, [messages.length, goapPanelOpen, selectedAgentId, dispatch]);
+
   const handleSendMessage = () => {
     if (inputMessage.trim() && isConnected) {
       // Enviar mensagem via WebSocket com agentId se selecionado
       sendMessage(inputMessage, 'text', selectedAgentId || undefined);
       
       // Adicionar mensagem localmente (será atualizada quando a resposta chegar)
+      // Mensagem do usuário sempre tem source 'websocket' e userId 'user'
       const newMessage: Message = {
-        id: Date.now().toString(),
+        id: `user_${Date.now()}`,
         content: inputMessage,
         timestamp: new Date().toISOString(),
-        source: currentEngine || 'websocket',
+        source: 'websocket', // Sempre 'websocket' para mensagens do usuário
+        userId: 'user', // Identificar como mensagem do usuário
         type: 'text',
       };
       
@@ -135,31 +172,6 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  const getSourceColor = (source: string) => {
-    switch (source) {
-      case 'websocket':
-        return 'primary';
-      case 'whatsapp':
-        return 'success';
-      case 'system':
-        return 'secondary';
-      default:
-        return 'default';
-    }
-  };
-
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case 'websocket':
-        return '🔌';
-      case 'whatsapp':
-        return '📱';
-      case 'system':
-        return '⚙️';
-      default:
-        return '💬';
-    }
-  };
 
   return (
     <Box sx={{ 
@@ -176,11 +188,29 @@ const ChatInterface: React.FC = () => {
           <Typography variant="h5" component="h2">
             Chat Interface
           </Typography>
-          <Chip
-            label={isConnected ? 'Conectado' : 'Desconectado'}
-            color={isConnected ? 'success' : 'error'}
-            variant="outlined"
-          />
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {selectedAgentId && (
+              <Tooltip title="Estado GOAP">
+                <IconButton
+                  onClick={() => setGoapPanelOpen(!goapPanelOpen)}
+                  color={goapPanelOpen ? 'primary' : 'default'}
+                >
+                  <Badge
+                    badgeContent={conversationState?.currentGoals.length || 0}
+                    color="primary"
+                    max={99}
+                  >
+                    <TrackChangesIcon />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+            )}
+            <Chip
+              label={isConnected ? 'Conectado' : 'Desconectado'}
+              color={isConnected ? 'success' : 'error'}
+              variant="outlined"
+            />
+          </Box>
         </Box>
         <FormControl fullWidth size="small">
           <InputLabel>Selecionar Agente</InputLabel>
@@ -243,47 +273,50 @@ const ChatInterface: React.FC = () => {
         sx={{
           flex: 1,
           overflow: 'auto',
-          p: 1,
+          p: 2,
           mb: 2,
           maxHeight: 'calc(100vh - 300px)',
         }}
       >
-        <List>
-          {messages.map((message, index) => (
-            <React.Fragment key={message.id}>
-              <ListItem
-                sx={{
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  px: 0,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, width: '100%' }}>
-                  <Avatar sx={{ width: 24, height: 24, mr: 1, fontSize: '0.75rem' }}>
-                    {getSourceIcon(message.source)}
-                  </Avatar>
-                  <Chip
-                    label={message.source}
-                    size="small"
-                    color={getSourceColor(message.source)}
-                    variant="outlined"
-                  />
-                  <Typography
-                    variant="caption"
-                    sx={{ ml: 'auto', color: 'text.secondary' }}
-                  >
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </Typography>
-                </Box>
-                <Box sx={{ width: '100%', mt: 1 }}>
-                  <MarkdownMessage content={message.content} />
-                </Box>
-              </ListItem>
-              {index < messages.length - 1 && <Divider sx={{ my: 1 }} />}
-            </React.Fragment>
-          ))}
+        <Box>
+          {messages.map((message, index) => {
+            // Determinar se é mensagem do usuário baseado no source:
+            // - 'websocket' = mensagem do usuário (cliente)
+            // - 'system' = mensagem do agente (resposta da IA)
+            // - 'manager' = mensagem do gerente/administrador (painel)
+            // - 'whatsapp' = mensagem do WhatsApp (pode ser usuário ou agente, depende do contexto)
+            let isUser = false;
+            
+            if (message.source === 'system') {
+              // Mensagem do agente - NÃO é do usuário
+              isUser = false;
+            } else if (message.source === 'manager') {
+              // Mensagem do gerente/administrador - tratar como usuário para exibição
+              isUser = true;
+            } else if (message.source === 'websocket') {
+              // Mensagem do usuário via WebSocket
+              // Se tem userId e não é 'manager', pode ser do usuário ou do agente
+              // Por padrão, websocket sem userId específico é do usuário
+              isUser = !message.userId || message.userId === 'user' || message.userId === 'current_user_id';
+            } else if (message.source === 'whatsapp') {
+              // Para WhatsApp, precisamos verificar melhor, mas por padrão assumir que não é do usuário
+              // (mensagens do WhatsApp geralmente são do cliente, mas a resposta vem como 'system')
+              isUser = false; // Por padrão, mensagens do WhatsApp são do cliente, mas a resposta vem como 'system'
+            } else {
+              // Se não tem source definido, tentar inferir pela posição (alternância)
+              isUser = index % 2 === 0;
+            }
+            
+            return (
+              <MessageWithInference
+                key={message.id}
+                message={message}
+                isUser={isUser}
+              />
+            );
+          })}
           <div ref={messagesEndRef} />
-        </List>
+        </Box>
       </Paper>
 
       {/* Input */}
@@ -322,6 +355,30 @@ const ChatInterface: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+
+      {/* Drawer para painel GOAP */}
+      <Drawer
+        anchor="right"
+        open={goapPanelOpen}
+        onClose={() => setGoapPanelOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: '100%', sm: 400, md: 500 },
+            p: 2,
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Estado GOAP</Typography>
+          <IconButton onClick={() => setGoapPanelOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <ConversationStatePanel
+          conversationState={conversationState}
+          loading={conversationStateLoading}
+        />
+      </Drawer>
     </Box>
   );
 };

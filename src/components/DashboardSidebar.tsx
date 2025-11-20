@@ -20,9 +20,9 @@ import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import RuleIcon from '@mui/icons-material/Rule';
 import BuildIcon from '@mui/icons-material/Build';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SettingsIcon from '@mui/icons-material/Settings';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import PsychologyIcon from '@mui/icons-material/Psychology';
 
 const DRAWER_WIDTH = 240;
 const DRAWER_WIDTH_COLLAPSED = 64;
@@ -38,14 +38,14 @@ const menuItems: MenuItem[] = [
   // CORE
   { label: 'Conversar', icon: <ChatBubbleIcon />, path: '/chat', section: 'CORE' },
   { label: 'Histórico de Conversas', icon: <HistoryIcon />, path: '/dashboard/history', section: 'CORE' },
-  { label: 'Estados de Inferência', icon: <PsychologyIcon />, path: '/dashboard/inference', section: 'CORE' },
   // AGENTES
   { label: 'Agentes', icon: <GroupIcon />, path: '/dashboard/agents', section: 'AGENTES' },
   { label: 'Personalidades', icon: <SentimentSatisfiedIcon />, path: '/dashboard/personalities', section: 'AGENTES' },
-  { label: 'Roles', icon: <AssignmentIndIcon />, path: '/dashboard/roles', section: 'AGENTES' },
+  { label: 'Papéis', icon: <AssignmentIndIcon />, path: '/dashboard/roles', section: 'AGENTES' },
   { label: 'Regras', icon: <RuleIcon />, path: '/dashboard/rules', section: 'AGENTES' },
   // CONFIGURAÇÕES
   { label: 'Ferramentas', icon: <BuildIcon />, path: '/dashboard/tools', section: 'CONFIGURAÇÕES' },
+  { label: 'Ações', icon: <PlayArrowIcon />, path: '/dashboard/actions', section: 'CONFIGURAÇÕES' },
   { label: 'Configurações', icon: <SettingsIcon />, path: '/dashboard/settings', section: 'CONFIGURAÇÕES' },
   { label: 'WhatsApp', icon: <WhatsAppIcon />, path: '/dashboard/whatsapp', section: 'CONFIGURAÇÕES' },
 ];

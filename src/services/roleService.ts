@@ -1,4 +1,5 @@
 import config from '../config/env';
+import { RoleGoal } from '../types/goap.types';
 
 export interface Role {
   id: string;
@@ -11,6 +12,7 @@ export interface Role {
   createdAt: string;
   updatedAt: string;
   metadata?: Record<string, any>;
+  goals?: RoleGoal[];
 }
 
 export interface CreateRoleData {
@@ -28,6 +30,7 @@ export interface UpdateRoleData {
   category?: string;
   isActive?: boolean;
   metadata?: Record<string, any>;
+  goals?: RoleGoal[];
 }
 
 class RoleService {

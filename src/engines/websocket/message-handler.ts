@@ -1,6 +1,6 @@
 // Handler puro para processar mensagens WebSocket (transformação de dados)
 import { MessageProtocol, WebSocketMessageData } from '../types';
-import { createWebSocketMessage, createSystemMessage } from '../protocol-builder';
+import { createWebSocketMessage, createSystemMessage, createProtocol } from '../protocol-builder';
 
 export interface ParsedWebSocketData {
   type?: string;
@@ -35,7 +35,11 @@ export const transformToProtocol = (data: ParsedWebSocketData): MessageProtocol 
       metadata: messageData.metadata,
     };
 
-    return createWebSocketMessage(wsData, 'message:received');
+    // IMPORTANTE: Preservar o source do backend se disponível
+    // O backend envia 'system' para respostas do agente e 'websocket' para mensagens do usuário
+    const source = data.source || messageData.source || 'websocket';
+    
+    return createProtocol('chat', 'message:received', wsData, source as any);
   }
 
   // Eventos de conexão

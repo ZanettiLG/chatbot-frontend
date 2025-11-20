@@ -246,7 +246,7 @@ export class SocketIOEngine implements MessageEngine {
         action: 'message:received',
         data: data.data,
         timestamp: data.timestamp || new Date().toISOString(),
-        source: 'websocket',
+        source: data.source || 'websocket', // IMPORTANTE: Preservar source do backend
         sessionId: data.sessionId, // IMPORTANTE: Preservar sessionId do protocolo
       };
     } else {
@@ -257,7 +257,7 @@ export class SocketIOEngine implements MessageEngine {
         action: 'message:received',
         data: data,
         timestamp: new Date().toISOString(),
-        source: 'websocket',
+        source: data.source || 'websocket', // IMPORTANTE: Preservar source do backend
         sessionId: data.sessionId, // IMPORTANTE: Preservar sessionId do protocolo
       };
     }

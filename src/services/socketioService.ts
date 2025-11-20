@@ -223,7 +223,7 @@ class SocketIOService {
 // Socket.IO usa HTTP/HTTPS para handshake, não WebSocket direto
 // O Socket.IO automaticamente adiciona /socket.io/ ao path
 export const socketioService = new SocketIOService({
-  url: config.wsUrl.replace('wss://', 'https://').replace('ws://', 'http://').replace('/ws', ''),
+  url: config.wsUrl.replace('wss://', 'https://').replace('ws://', 'http://'),
   reconnectInterval: 5000,
   maxReconnectAttempts: 10,
 });

@@ -28,14 +28,28 @@ export const createReduxAdapter = (config: ReduxAdapterConfig) => {
     if (protocol.action === 'message:received' && protocol.route === 'chat') {
       const messageData = protocol.data;
       
+      // IMPORTANTE: Usar o source do protocol, não o engineType
+      // O backend envia 'system' para respostas do agente e 'websocket' para mensagens do usuário
+      const messageSource = protocol.source || engineType;
+      
       const message: Message = {
         id: protocol.id,
-        content: messageData.content || messageData.body || '',
-        timestamp: protocol.timestamp,
-        source: engineType,
-        userId: messageData.userId,
-        type: messageData.type || 'text',
+        content: typeof messageData === 'string' 
+          ? messageData 
+          : (messageData?.content || messageData?.body || ''),
+        timestamp: protocol.timestamp || new Date().toISOString(),
+        source: messageSource as 'websocket' | 'whatsapp' | 'system',
+        userId: typeof messageData === 'object' ? messageData?.userId : undefined,
+        type: typeof messageData === 'object' ? (messageData?.type || 'text') : 'text',
       };
+
+      console.log('📨 [ReduxAdapter] Adicionando mensagem:', {
+        id: message.id,
+        source: message.source,
+        engineType,
+        protocolSource: protocol.source,
+        hasContent: !!message.content,
+      });
 
       store.dispatch(addMessage(message));
       store.dispatch(incrementMessageCount(engineType));

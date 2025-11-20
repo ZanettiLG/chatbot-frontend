@@ -48,6 +48,10 @@ import { Tool } from '../services/toolService';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './EmptyState';
 import ListSkeleton from './ListSkeleton';
+import RoleGoalFormDialog from './RoleGoalFormDialog';
+import { RoleGoal } from '../types/goap.types';
+import { fetchActions } from '../store/actionSlice';
+import FlagIcon from '@mui/icons-material/Flag';
 
 const CATEGORIES = [
   'atendimento',
@@ -69,6 +73,10 @@ const RoleManagement: React.FC = () => {
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [selectedRoleForTools, setSelectedRoleForTools] = useState<Role | null>(null);
   const [roleToolIds, setRoleToolIds] = useState<Set<string>>(new Set());
+  const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
+  const [selectedRoleForGoals, setSelectedRoleForGoals] = useState<Role | null>(null);
+  const [goalFormOpen, setGoalFormOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<RoleGoal | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [formData, setFormData] = useState({
@@ -82,6 +90,7 @@ const RoleManagement: React.FC = () => {
   useEffect(() => {
     dispatch(fetchRoles() as any);
     dispatch(fetchTools(true) as any); // Carregar apenas tools ativas
+    dispatch(fetchActions() as any); // Carregar actions para seleção em goals
   }, [dispatch]);
 
   useEffect(() => {
@@ -239,6 +248,17 @@ const RoleManagement: React.FC = () => {
                   </Box>
                 </Box>
                 <ListItemSecondaryAction>
+                  <Tooltip title="Gerenciar Goals">
+                    <IconButton
+                      edge="end"
+                      onClick={() => {
+                        setSelectedRoleForGoals(role);
+                        setGoalsDialogOpen(true);
+                      }}
+                    >
+                      <FlagIcon />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Gerenciar Ferramentas">
                     <IconButton
                       edge="end"
@@ -471,6 +491,156 @@ const RoleManagement: React.FC = () => {
           <Button onClick={() => setToolsDialogOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog para gerenciar Goals da Role */}
+      <Dialog open={goalsDialogOpen} onClose={() => {
+        setGoalsDialogOpen(false);
+        setSelectedRoleForGoals(null);
+        setEditingGoal(null);
+      }} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Goals da Role: {selectedRoleForGoals?.name}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">Goals do Role</Typography>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setEditingGoal(null);
+                  setGoalFormOpen(true);
+                }}
+              >
+                Adicionar Goal
+              </Button>
+            </Box>
+            {selectedRoleForGoals?.goals && selectedRoleForGoals.goals.length > 0 ? (
+              <List>
+                {selectedRoleForGoals.goals.map((goal) => (
+                  <ListItem
+                    key={goal.id}
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="h6">{goal.name}</Typography>
+                          <Chip label={`Prioridade: ${goal.priority}`} size="small" color="primary" variant="outlined" />
+                          <Chip label={goal.category} size="small" />
+                        </Box>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {goal.description}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              <strong>Ativação:</strong> {goal.activationConditions.length} condição(ões)
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              <strong>Sucesso:</strong> {goal.successCriteria.length} critério(s)
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              <strong>Ações:</strong> {goal.suggestedActions.length}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      }
+                    />
+                    <ListItemSecondaryAction>
+                      <IconButton
+                        edge="end"
+                        onClick={() => {
+                          setEditingGoal(goal);
+                          setGoalFormOpen(true);
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        onClick={async () => {
+                          if (window.confirm('Tem certeza que deseja remover este goal?')) {
+                            if (selectedRoleForGoals) {
+                              const updatedGoals = (selectedRoleForGoals.goals || []).filter(g => g.id !== goal.id);
+                              try {
+                                await dispatch(updateRole({
+                                  id: selectedRoleForGoals.id,
+                                  data: { goals: updatedGoals },
+                                }) as any);
+                                showSuccess('Goal removido com sucesso!');
+                                dispatch(fetchRoles() as any);
+                              } catch (error: any) {
+                                showError(`Erro ao remover goal: ${error?.message || error?.toString()}`);
+                              }
+                            }
+                          }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                Nenhum goal cadastrado para este role.
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setGoalsDialogOpen(false);
+            setSelectedRoleForGoals(null);
+            setEditingGoal(null);
+          }}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para criar/editar Goal */}
+      <RoleGoalFormDialog
+        open={goalFormOpen}
+        onClose={() => {
+          setGoalFormOpen(false);
+          setEditingGoal(null);
+        }}
+        onSubmit={async (goal) => {
+          if (selectedRoleForGoals) {
+            const currentGoals = selectedRoleForGoals.goals || [];
+            let updatedGoals: RoleGoal[];
+            
+            if (editingGoal) {
+              updatedGoals = currentGoals.map(g => g.id === goal.id ? goal : g);
+            } else {
+              updatedGoals = [...currentGoals, goal];
+            }
+
+            try {
+              await dispatch(updateRole({
+                id: selectedRoleForGoals.id,
+                data: { goals: updatedGoals },
+              }) as any);
+              showSuccess(editingGoal ? 'Goal atualizado com sucesso!' : 'Goal criado com sucesso!');
+              setGoalFormOpen(false);
+              setEditingGoal(null);
+              dispatch(fetchRoles() as any);
+            } catch (error: any) {
+              showError(`Erro ao salvar goal: ${error?.message || error?.toString()}`);
+            }
+          }
+        }}
+        editingGoal={editingGoal}
+      />
     </Box>
   );
 };

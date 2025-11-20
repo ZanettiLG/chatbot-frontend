@@ -22,10 +22,10 @@ const RoleManagement = lazy(() => import('./components/RoleManagement'));
 const PersonalityManagement = lazy(() => import('./components/PersonalityManagement'));
 const RuleManagement = lazy(() => import('./components/RuleManagement'));
 const ToolManagement = lazy(() => import('./components/ToolManagement'));
+const ActionManagement = lazy(() => import('./components/ActionManagement'));
 const UnifiedChatInterface = lazy(() => import('./components/UnifiedChatInterface'));
 const EngineStatus = lazy(() => import('./components/EngineStatus'));
 const WhatsAppManagement = lazy(() => import('./components/WhatsAppManagement'));
-const InferenceManagement = lazy(() => import('./components/InferenceManagement'));
 
 const LoadingFallback: React.FC = () => (
   <Box
@@ -125,6 +125,16 @@ const App: React.FC = () => {
               }
             />
             <Route
+              path="/dashboard/actions"
+              element={
+                <DashboardLayout>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <ActionManagement />
+                  </Suspense>
+                </DashboardLayout>
+              }
+            />
+            <Route
               path="/dashboard/history"
               element={
                 <DashboardLayout>
@@ -150,16 +160,6 @@ const App: React.FC = () => {
                 <DashboardLayout>
                   <Suspense fallback={<LoadingFallback />}>
                     <WhatsAppManagement />
-                  </Suspense>
-                </DashboardLayout>
-              }
-            />
-            <Route
-              path="/dashboard/inference"
-              element={
-                <DashboardLayout>
-                  <Suspense fallback={<LoadingFallback />}>
-                    <InferenceManagement />
                   </Suspense>
                 </DashboardLayout>
               }

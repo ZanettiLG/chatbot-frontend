@@ -9,6 +9,8 @@ import ruleSlice from './ruleSlice';
 import whatsappSessionSlice from './whatsappSessionSlice';
 import toolSlice from './toolSlice';
 import conversationSlice from './conversationSlice';
+import actionSlice from './actionSlice';
+import conversationStateSlice from './conversationStateSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +24,8 @@ export const store = configureStore({
     whatsappSession: whatsappSessionSlice,
     tool: toolSlice,
     conversation: conversationSlice,
+    action: actionSlice,
+    conversationState: conversationStateSlice,
   },
 });
 

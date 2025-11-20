@@ -38,7 +38,9 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { MessageProtocol } from '../engines/types';
 import MarkdownMessage from './MarkdownMessage';
 import InferenceStateView from './InferenceStateView';
+import MessageWithInference from './MessageWithInference';
 import { inferenceService, InferenceState } from '../services/inferenceService';
+import { Message } from '../store/chatSlice';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -77,17 +79,52 @@ const UnifiedChatInterface: React.FC = () => {
     ? messagesByConversation[selectedConversationId] || []
     : [];
 
+  // Debug: Log das mensagens atuais
+  useEffect(() => {
+    if (selectedConversationId) {
+      console.log('📊 Estado atual das mensagens:', {
+        selectedConversationId,
+        messageCount: currentMessages.length,
+        messages: currentMessages,
+        messagesByConversationKeys: Object.keys(messagesByConversation),
+        allMessagesByConversation: messagesByConversation,
+      });
+    } else {
+      console.log('ℹ️ Nenhuma conversa selecionada');
+    }
+  }, [selectedConversationId, currentMessages.length, messagesByConversation]);
+
   useEffect(() => {
     dispatch(fetchConversations() as any);
   }, [dispatch]);
 
   useEffect(() => {
     if (selectedConversationId) {
+      console.log('🔄 Selecionando conversa:', selectedConversationId);
       dispatch(selectConversation(selectedConversationId) as any);
-      dispatch(fetchConversationMessages({ conversationId: selectedConversationId, limit: 50 }) as any);
-      loadLatestInference(selectedConversationId);
+      
+      // Buscar mensagens da conversa
+      console.log('📥 Buscando mensagens para conversa:', selectedConversationId);
+      dispatch(fetchConversationMessages({ conversationId: selectedConversationId, limit: 50 }) as any)
+        .then((result: any) => {
+          console.log('✅ Mensagens carregadas com sucesso:', {
+            conversationId: selectedConversationId,
+            messageCount: result.payload?.messages?.length || 0,
+            messages: result.payload?.messages,
+            payload: result.payload,
+          });
+        })
+        .catch((error: any) => {
+          console.error('❌ Erro ao carregar mensagens:', error);
+        });
+      
+      // Buscar inferência mais recente
+      const selectedConv = conversations.find((c) => c.id === selectedConversationId);
+      if (selectedConv) {
+        loadLatestInference(selectedConv.sessionId);
+      }
     }
-  }, [selectedConversationId, dispatch]);
+  }, [selectedConversationId, dispatch, conversations]);
 
   // Atualizar inferência quando novas mensagens chegarem
   useEffect(() => {
@@ -275,17 +312,17 @@ const UnifiedChatInterface: React.FC = () => {
                       <ListItemText
                         primary={conversation.contactName || conversation.contactIdentifier}
                         secondary={
-                          <Box>
-                            <Typography variant="caption" display="block">
+                          <>
+                            <Typography variant="caption" component="span" display="block">
                               {new Date(conversation.lastMessageAt).toLocaleString()}
                             </Typography>
                             <Chip
                               label={conversation.status}
                               size="small"
                               color={conversation.status === 'active' ? 'success' : 'default'}
-                              sx={{ mt: 0.5 }}
+                              sx={{ mt: 0.5, display: 'inline-block' }}
                             />
-                          </Box>
+                          </>
                         }
                       />
                       <IconButton
@@ -348,45 +385,81 @@ const UnifiedChatInterface: React.FC = () => {
             )}
 
             <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-              <List>
-                {currentMessages.length === 0 ? (
-                  <ListItem>
-                    <ListItemText
-                      primary="Nenhuma mensagem ainda"
-                      secondary="Envie uma mensagem para começar a conversa"
-                    />
-                  </ListItem>
-                ) : (
-                  currentMessages.map((message: any, index: number) => (
-                    <React.Fragment key={message.id || index}>
-                      <ListItem
-                        sx={{
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          px: 0,
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, width: '100%' }}>
-                          <Chip
-                            label={getProviderLabel(message.source || selectedConversation.provider)}
-                            size="small"
-                            color={getProviderColor(message.source || selectedConversation.provider)}
-                            variant="outlined"
-                          />
-                          <Typography variant="caption" sx={{ ml: 'auto', color: 'text.secondary' }}>
-                            {new Date(message.timestamp).toLocaleTimeString()}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ width: '100%', mt: 1 }}>
-                          <MarkdownMessage content={message.content} />
-                        </Box>
-                      </ListItem>
-                      {index < currentMessages.length - 1 && <Divider sx={{ my: 1 }} />}
-                    </React.Fragment>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </List>
+              {currentMessages.length === 0 ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: 200,
+                    color: 'text.secondary',
+                  }}
+                >
+                  <ChatIcon sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Nenhuma mensagem ainda
+                  </Typography>
+                  <Typography variant="body2">
+                    Envie uma mensagem para começar a conversa
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  {currentMessages.map((message: any, index: number) => {
+                    // Determinar se é mensagem do usuário baseado no source:
+                    // - 'websocket' = mensagem do usuário (cliente) - SEM userId ou com userId do usuário
+                    // - 'system' = mensagem do agente (resposta da IA)
+                    // - 'manager' = mensagem do gerente/administrador (painel)
+                    // 
+                    // IMPORTANTE: Se a mensagem não tem source definido, tentar inferir pela posição:
+                    // - Mensagens em posições pares (0, 2, 4...) geralmente são do usuário
+                    // - Mensagens em posições ímpares (1, 3, 5...) geralmente são do agente
+                    let isUser = false;
+                    let isManager = false;
+                    
+                    if (message.source === 'system') {
+                      // Mensagem do agente
+                      isUser = false;
+                    } else if (message.source === 'manager') {
+                      // Mensagem do gerente/administrador
+                      isManager = true;
+                      isUser = true; // Tratar como mensagem do usuário para exibição
+                    } else if (message.source === 'websocket') {
+                      // Mensagem do usuário via WebSocket
+                      isUser = true;
+                    } else {
+                      // Se não tem source definido, tentar inferir pela posição
+                      // Alternância: usuário, agente, usuário, agente...
+                      isUser = index % 2 === 0;
+                      console.warn('⚠️ [UnifiedChatInterface] Mensagem sem source definido, inferindo pela posição:', {
+                        index,
+                        isUser,
+                        messageId: message.id,
+                      });
+                    }
+                    
+                    // Converter para formato Message do chatSlice
+                    const chatMessage: Message = {
+                      id: message.id,
+                      content: message.content || '',
+                      timestamp: message.timestamp,
+                      source: message.source || (isUser ? 'websocket' : 'system'),
+                      userId: isUser ? 'user' : (isManager ? 'manager' : undefined),
+                      type: 'text',
+                    };
+                    
+                    return (
+                      <MessageWithInference
+                        key={message.id}
+                        message={chatMessage}
+                        isUser={isUser || isManager}
+                      />
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </Box>
+              )}
             </Box>
 
             <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
