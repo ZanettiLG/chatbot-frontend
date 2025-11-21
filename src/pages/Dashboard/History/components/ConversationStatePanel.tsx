@@ -10,10 +10,11 @@ import PublicIcon from '@mui/icons-material/Public';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-import { ConversationState } from '../../../types/goap.types';
-import WorldStateView from '../../../components/WorldStateView';
-import ActiveGoalsView from '../../../components/ActiveGoalsView';
-import PlannedActionsView from '../../../components/PlannedActionsView';
+import { ConversationState } from '../../../../types/goap.types';
+import WorldStateView from '../../../../components/WorldStateView';
+import PlannedActionsView from '../../../../components/PlannedActionsView';
+
+import ActiveGoalsView from './ActiveGoalsView';
 
 interface ConversationStatePanelProps {
   conversationState: ConversationState | null;
