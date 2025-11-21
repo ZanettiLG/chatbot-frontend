@@ -1,7 +1,8 @@
 // Singleton para manter uma única instância da engine (compartilhada entre componentes)
-import { MessageEngine, EngineConfig } from './types';
-import { createEngine } from './factory';
 import config from '../config/env';
+
+import { createEngine } from './factory';
+import { MessageEngine, EngineConfig } from './types';
 
 class EngineInstanceManager {
   private engine: MessageEngine | null = null;

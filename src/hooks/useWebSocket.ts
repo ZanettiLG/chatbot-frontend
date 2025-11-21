@@ -1,11 +1,16 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { MessageEngine, ConnectionStatus, MessageProtocol, MessageHandler } from '../engines/types';
+import { useEffect, useCallback, useRef, useState } from 'react';
+
+import { store, RootState } from '../store';
 import { engineInstance } from '../engines/engine-instance';
 import { HandlerRegistry } from '../engines/handler-registry';
 import { createReduxAdapter } from '../engines/adapters/redux-adapter';
-import { store } from '../store';
+import { 
+  MessageEngine,
+  MessageHandler,
+  MessageProtocol,
+  ConnectionStatus,
+} from '../engines/types';
 
 export interface UseWebSocketOptions {
   /**

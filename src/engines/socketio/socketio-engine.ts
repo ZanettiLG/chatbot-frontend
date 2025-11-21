@@ -1,7 +1,8 @@
 // Engine Socket.IO agnóstica (sem Redux, sem React)
-import { MessageEngine, EngineConfig, ConnectionStatus, MessageProtocol } from '../types';
-import { createSystemMessage } from '../protocol-builder';
 import { io, Socket } from 'socket.io-client';
+
+import { createSystemMessage } from '../protocol-builder';
+import { MessageEngine, EngineConfig, ConnectionStatus, MessageProtocol } from '../types';
 
 type MessageHandler = (protocol: MessageProtocol) => void;
 type StatusChangeHandler = (status: ConnectionStatus) => void;
@@ -112,12 +113,12 @@ export class SocketIOEngine implements MessageEngine {
       });
 
       // Escutar mensagens do servidor
-      this.socket.on('message', (data: any) => {
+      this.socket.on('message', (data: MessageProtocol) => {
         this.handleMessage(data);
       });
 
       // Escutar eventos de sistema
-      this.socket.on('connection:open', (data: any) => {
+      this.socket.on('connection:open', (data: MessageProtocol) => {
         console.log('🎉 Conexão estabelecida:', data);
         this.updateStatus({
           isConnected: true,
@@ -125,14 +126,14 @@ export class SocketIOEngine implements MessageEngine {
         });
       });
 
-      this.socket.on('connection:close', (data: any) => {
+      this.socket.on('connection:close', (data: MessageProtocol) => {
         console.log('🔴 Conexão fechada:', data);
         this.updateStatus({
           isConnected: false,
         });
       });
 
-      this.socket.on('error:occurred', (data: any) => {
+      this.socket.on('error:occurred', (data: MessageProtocol) => {
         console.error('❌ Erro no Socket.IO:', data);
         this.notifyMessage(createSystemMessage('error:occurred', { error: data }));
       });
@@ -173,7 +174,7 @@ export class SocketIOEngine implements MessageEngine {
 
     // Criar mensagem no formato esperado pelo servidor NestJS
     // O servidor espera o evento 'message' com dados no formato MessageProtocol
-    const message: any = {
+    const message: MessageProtocol = {
       route: 'chat',
       action: 'message:send',
       data: {
@@ -220,7 +221,7 @@ export class SocketIOEngine implements MessageEngine {
     };
   }
 
-  private handleMessage(data: any): void {
+  private handleMessage(data: MessageProtocol): void {
     console.log('📨 Mensagem recebida do Socket.IO:', data);
 
     // Transformar mensagem do servidor em MessageProtocol

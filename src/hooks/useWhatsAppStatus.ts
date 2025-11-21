@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { io, Socket } from 'socket.io-client';
+
 import config from '../config/env';
-import { setQRCode, updateSessionStatus, clearQRCode } from '../store/whatsappSessionSlice';
 import { updateEngineStatus } from '../store/engineSlice';
+import { setQRCode, updateSessionStatus, clearQRCode } from '../store/whatsappSessionSlice';
 
 export const useWhatsAppStatus = (sessionId?: string) => {
   const dispatch = useDispatch();
@@ -76,13 +77,21 @@ export const useWhatsAppStatus = (sessionId?: string) => {
       
       // Por enquanto, vamos usar uma abordagem mais simples:
       // Escutar eventos com um padrão conhecido usando uma função wrapper
-      const createGenericListener = (eventPattern: string, handler: (data: any) => void) => {
+      const createGenericListener = (eventPattern: string, handler: (data: Record<string, unknown>) => void): () => void => {
         // Tentar escutar eventos que correspondem ao padrão
         // Como não podemos usar wildcards, vamos usar uma abordagem diferente:
         // Vamos escutar eventos específicos que serão registrados dinamicamente no componente
         // Por enquanto, vamos apenas logar que estamos esperando eventos genéricos
         console.log(`📡 Waiting for events matching pattern: ${eventPattern}`);
+        socket.on(eventPattern, handler);
+        return () => {
+          console.log(`📡 Removing generic listener for pattern: ${eventPattern}`);
+          socket.off(eventPattern, handler);
+        };
       };
+
+      createGenericListener('session:*:qr', qrHandler);
+      createGenericListener('session:*:status', statusHandler);
       
       // Nota: Os listeners específicos serão registrados no componente WhatsAppSessionManagement
       // Este hook apenas mantém a conexão WebSocket aberta

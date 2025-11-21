@@ -20,7 +20,7 @@ export interface MessageProtocol {
   id: string;
   route: MessageRoute;
   action: MessageAction;
-  data: any;
+  data: Record<string, unknown>;
   timestamp: string; // ISO string
   source: EngineType;
   sessionId?: string;
@@ -34,7 +34,7 @@ export interface WebSocketMessageData {
   content: string;
   type: 'text' | 'image' | 'audio' | 'video';
   room?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface EngineConfig {

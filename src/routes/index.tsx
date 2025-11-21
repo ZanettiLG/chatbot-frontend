@@ -9,6 +9,7 @@ import NotFound from '../pages/NotFound';
 import ChatInterface from '../pages/Chat';
 import DashboardOverview from '../pages/Dashboard';
 import DashboardLayout from '../pages/Dashboard/layouts/DashboardLayout';
+
 // Lazy loading para componentes do Dashboard
 const History = lazy(() => import('../pages/Dashboard/History'));
 const RoleManagement = lazy(() => import('../pages/Dashboard/Roles'));

@@ -1,9 +1,10 @@
 // Engine WebSocket agnóstica (sem Redux, sem React)
-import { MessageEngine, EngineConfig, ConnectionStatus, MessageProtocol } from '../types';
-import { createConnection, connectWebSocket, disconnectWebSocket, sendWebSocketMessage, isWebSocketConnected } from './connection';
-import { createReconnectionState, scheduleReconnect, resetReconnection, cancelReconnection } from './reconnection';
-import { parseWebSocketMessage, transformToProtocol, createOutgoingMessage } from './message-handler';
 import { createSystemMessage } from '../protocol-builder';
+import { MessageEngine, EngineConfig, ConnectionStatus, MessageProtocol } from '../types';
+
+import { parseWebSocketMessage, transformToProtocol, createOutgoingMessage } from './message-handler';
+import { createReconnectionState, scheduleReconnect, resetReconnection, cancelReconnection } from './reconnection';
+import { createConnection, connectWebSocket, disconnectWebSocket, sendWebSocketMessage, isWebSocketConnected } from './connection';
 
 type MessageHandler = (protocol: MessageProtocol) => void;
 type StatusChangeHandler = (status: ConnectionStatus) => void;

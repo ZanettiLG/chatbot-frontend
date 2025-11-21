@@ -115,7 +115,8 @@ export const createReduxAdapter = (config: ReduxAdapterConfig) => {
   /**
    * Handler para erros
    */
-  const handleError = (_error: any): void => {
+  const handleError = (error: Error): void => {
+    console.error('Erro no ReduxAdapter:', error);
     store.dispatch(setConnectionStatus(false));
     store.dispatch(updateEngineStatus({
       engine: engineType,
