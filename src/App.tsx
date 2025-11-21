@@ -1,58 +1,42 @@
-import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
+import React from 'react';
 import { useSelector } from 'react-redux';
+import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider } from '@mui/material/styles';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
+import routes from './routes';
 import { RootState } from './store';
 import { theme, darkTheme } from './styles/theme';
-import Header from './components/Header';
-import DashboardLayout from './components/DashboardLayout';
-import NotFound from './components/NotFound';
-import ToastNotification from './components/ToastNotification';
-
-// Componentes principais (não lazy para melhor performance inicial)
-import ChatInterface from './components/ChatInterface';
-import DashboardOverview from './components/DashboardOverview';
-
-// Lazy loading para componentes do Dashboard
-const AgentManagement = lazy(() => import('./components/AgentManagement'));
-const RoleManagement = lazy(() => import('./components/RoleManagement'));
-const PersonalityManagement = lazy(() => import('./components/PersonalityManagement'));
-const RuleManagement = lazy(() => import('./components/RuleManagement'));
-const ToolManagement = lazy(() => import('./components/ToolManagement'));
-const ActionManagement = lazy(() => import('./components/ActionManagement'));
-const UnifiedChatInterface = lazy(() => import('./components/UnifiedChatInterface'));
-const EngineStatus = lazy(() => import('./components/EngineStatus'));
-const WhatsAppManagement = lazy(() => import('./components/WhatsAppManagement'));
-
-const LoadingFallback: React.FC = () => (
-  <Box
-    sx={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '400px',
-    }}
-  >
-    <CircularProgress />
-  </Box>
-);
 
 const App: React.FC = () => {
   console.log('App component rendering');
+  const { theme: currentTheme } = useSelector((state: RootState) => state.ui);
+  const muiTheme = currentTheme === 'dark' ? darkTheme : theme;
+
+  const router = createBrowserRouter(routes);
   
   try {
-    const { theme: currentTheme } = useSelector((state: RootState) => state.ui);
-    const muiTheme = currentTheme === 'dark' ? darkTheme : theme;
-
     return (
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
-        <Header />
-        <ToastNotification />
-        
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    );
+  } catch (error) {
+    console.error('Error in App component:', error);
+    return (
+      <div>
+        <h1>Error loading app</h1>
+        <p>{String(error)}</p>
+      </div>
+    );
+  }
+};
+
+export default App;
+
+
+/*
         <Box
           component="main"
           sx={{
@@ -61,11 +45,9 @@ const App: React.FC = () => {
           }}
         >
           <Routes>
-            {/* Rotas de Chat (sem sidebar) */}
             <Route path="/" element={<ChatInterface />} />
             <Route path="/chat" element={<ChatInterface />} />
             <Route path="/chat/:agentId" element={<ChatInterface />} />
-            {/* Rotas do Dashboard (com sidebar) */}
             <Route
               path="/dashboard"
               element={
@@ -165,7 +147,6 @@ const App: React.FC = () => {
               }
             />
             
-            {/* Redirects para compatibilidade com rotas antigas */}
             <Route path="/conversations" element={<Navigate to="/dashboard/history" replace />} />
             <Route path="/engines" element={<Navigate to="/dashboard/settings" replace />} />
             <Route path="/agents" element={<Navigate to="/dashboard/agents" replace />} />
@@ -176,21 +157,9 @@ const App: React.FC = () => {
             <Route path="/whatsapp-sessions" element={<Navigate to="/dashboard/whatsapp" replace />} />
             <Route path="/dashboard/whatsapp-sessions" element={<Navigate to="/dashboard/whatsapp" replace />} />
             
-            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Box>
-      </ThemeProvider>
-    );
-  } catch (error) {
-    console.error('Error in App component:', error);
-    return (
-      <div>
-        <h1>Error loading app</h1>
-        <p>{String(error)}</p>
-      </div>
-    );
-  }
-};
 
-export default App;
+
+*/

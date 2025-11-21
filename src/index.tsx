@@ -1,10 +1,10 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
-import { BrowserRouter } from 'react-router-dom';
-import { store } from './store';
+import ReactDOM from 'react-dom/client';
+
 import App from './App';
 import './styles/index.css';
+import { store } from './store';
 
 console.log('Index.tsx loaded');
 
@@ -19,9 +19,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <App />
     </Provider>
   </React.StrictMode>
 );

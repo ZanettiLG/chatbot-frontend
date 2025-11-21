@@ -1,9 +1,10 @@
 import React from 'react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 import LinearProgress from '@mui/material/LinearProgress';
+
 import { ActiveGoal } from '../types/goap.types';
 
 interface ActiveGoalsViewProps {

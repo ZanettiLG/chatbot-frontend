@@ -109,11 +109,11 @@ interface MarkdownMessageProps {
   content: string;
 }
 
-const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
+const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ children }) => {
   return (
     <MarkdownContainer>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {content}
+        {children}
       </ReactMarkdown>
     </MarkdownContainer>
   );

@@ -6,6 +6,7 @@ interface ConversationState {
   selectedConversationId: string | null;
   messagesByConversation: Record<string, any[]>;
   loading: boolean;
+  isInitialLoad: boolean;
   error: string | null;
 }
 
@@ -14,6 +15,7 @@ const initialState: ConversationState = {
   selectedConversationId: null,
   messagesByConversation: {},
   loading: false,
+  isInitialLoad: true,
   error: null,
 };
 
@@ -77,15 +79,21 @@ const conversationSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchConversations.pending, (state) => {
-        state.loading = true;
+        // Só mostrar loading na primeira carga
+        if (state.isInitialLoad) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.loading = false;
+        state.isInitialLoad = false;
+        // Atualizar conversas sem causar re-render completo
         state.conversations = action.payload;
       })
       .addCase(fetchConversations.rejected, (state, action) => {
         state.loading = false;
+        state.isInitialLoad = false;
         state.error = action.error.message || 'Failed to fetch conversations';
       })
       .addCase(selectConversation.fulfilled, (state, action) => {

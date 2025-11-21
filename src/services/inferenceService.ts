@@ -28,7 +28,7 @@ export interface InferenceState {
   intent: string;
   confidence: number;
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class InferenceService {
@@ -78,14 +78,21 @@ class InferenceService {
   }
 
   async getByMessageId(messageId: string): Promise<InferenceState | null> {
-    const response = await fetch(`${this.baseUrl}/message/${messageId}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
+    try {
+      const response = await fetch(`${this.baseUrl}/message/${messageId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(`Failed to fetch inference by message: ${response.statusText}`);
       }
-      throw new Error(`Failed to fetch inference by message: ${response.statusText}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      // Em caso de erro de rede, retornar null silenciosamente
+      console.warn('Error fetching inference by messageId:', error);
+      return null;
     }
-    return response.json();
   }
 }
 
