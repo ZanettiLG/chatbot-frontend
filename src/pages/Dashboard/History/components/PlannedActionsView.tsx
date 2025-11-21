@@ -6,7 +6,7 @@ import Chip from '@mui/material/Chip';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import { PlannedAction } from '../types/goap.types';
+import { PlannedAction } from '../../../../types/goap.types';
 
 interface PlannedActionsViewProps {
   actions: PlannedAction[];

@@ -12,7 +12,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 import { ConversationState } from '../../../../types/goap.types';
 import WorldStateView from '../../../../components/WorldStateView';
-import PlannedActionsView from '../../../../components/PlannedActionsView';
+import PlannedActionsView from './PlannedActionsView';
 
 import ActiveGoalsView from './ActiveGoalsView';
 
