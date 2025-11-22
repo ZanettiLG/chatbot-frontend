@@ -95,7 +95,7 @@ const ChatHeader = React.memo<ChatHeaderProps>(({ message, author, isLeft }: Cha
 
 ChatHeader.displayName = 'ChatHeader';
 
-const ChatMessage = React.memo<ChatMessageProps>(({ message, author, align }: ChatMessageProps) => {
+const ChatMessage = React.memo<ChatMessageProps>(({ message, author, align, children }: ChatMessageProps) => {
   const isLeft = useMemo(() => align === 'left', [align]);
   return (
     <Box 
@@ -112,7 +112,6 @@ const ChatMessage = React.memo<ChatMessageProps>(({ message, author, align }: Ch
         sx={{
           px: 2,
           borderRadius: 2,
-          maxWidth: '75%',
           border: '1px solid',
           borderColor: !isLeft ? 'none' : 'divider',
           bgcolor: !isLeft ? 'primary.main' : 'background.paper',
@@ -120,6 +119,7 @@ const ChatMessage = React.memo<ChatMessageProps>(({ message, author, align }: Ch
         }}
       >
         <MarkdownMessage>{message.content}</MarkdownMessage>
+        {children}
       </Paper>
     </Box>
   );

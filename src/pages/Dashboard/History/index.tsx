@@ -34,11 +34,11 @@ import { useWebSocket } from '../../../hooks/useWebSocket';
 import { Conversation } from '../../../services/conversationService';
 import { inferenceService, InferenceState } from '../../../services/inferenceService';
 import {
+  addMessage,
   fetchConversations,
   selectConversation,
   archiveConversation,
   setSelectedConversation,
-  addMessage,
   fetchConversationMessages,
 } from '../../../store/conversationSlice';
 
@@ -75,14 +75,14 @@ interface ConversationListItemProps {
   getProviderColor: (provider: string) => string;
 }
 
-const ConversationListItem = React.memo(function ConversationListItem({
+const ConversationListItem = React.memo(({
   conversation,
   isSelected,
   onSelect,
   onArchive,
   getProviderIcon,
   getProviderColor,
-}: ConversationListItemProps) {
+}: ConversationListItemProps) => {
   const handleSelect = useCallback(() => {
     onSelect(conversation.id);
   }, [onSelect, conversation.id]);
@@ -131,19 +131,24 @@ const ConversationListItem = React.memo(function ConversationListItem({
   );
 });
 
-const UnifiedChatInterface: React.FC = () => {
+ConversationListItem.displayName = 'ConversationListItem';
+
+
+
+
+const History: React.FC = () => {
   const dispatch = useDispatch();
   const { conversations, selectedConversationId, messagesByConversation, loading, error } = useSelector(
     (state: RootState) => state.conversation
   );
   const [tabValue, setTabValue] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [latestInference, setLatestInference] = useState<InferenceState | null>(null);
-  const [showInference, setShowInference] = useState(false);
   const previousMessageCountRef = useRef<number>(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const previousMessagesIdsStringRef = useRef<string>('');
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showInference, setShowInference] = useState(false);
+  const [latestInference, setLatestInference] = useState<InferenceState | null>(null);
 
   // Memoizar conversa selecionada
   const selectedConversation = useMemo(
@@ -152,22 +157,11 @@ const UnifiedChatInterface: React.FC = () => {
   );
 
   // Memoizar mensagens atuais - usar string de IDs para comparação estável
-  const currentMessages = useMemo(() => {
-    const messages = selectedConversationId ? messagesByConversation[selectedConversationId] || [] : [];
-    console.log('📨 [UnifiedChatInterface] currentMessages atualizado:', {
-      selectedConversationId,
-      messageCount: messages.length,
-      hasMessages: messages.length > 0,
-      messagesByConversationKeys: Object.keys(messagesByConversation),
-    });
-    return messages;
-  }, [selectedConversationId, messagesByConversation]);
+  const currentMessages = useMemo(() => selectedConversationId && messagesByConversation[selectedConversationId] || [], [selectedConversationId, messagesByConversation]);
   
   // Criar uma string de IDs das mensagens para comparação estável
   const messagesIdsString = useMemo(() => {
-    if (!currentMessages || currentMessages.length === 0) {
-      return '';
-    }
+    if (!currentMessages || currentMessages.length === 0) return '';
     return currentMessages.map(m => m?.id || '').filter(id => id).join(',');
   }, [currentMessages]);
 
@@ -187,41 +181,15 @@ const UnifiedChatInterface: React.FC = () => {
 
   // Carregar mensagens quando uma conversa é selecionada
   useEffect(() => {
-    console.log('🔄 [UnifiedChatInterface] useEffect executado:', {
-      selectedConversationId,
-      hasSelectedConversation: !!selectedConversation,
-      conversationsCount: conversations.length,
-    });
-    
     if (selectedConversationId) {
-      console.log('✅ [UnifiedChatInterface] Carregando mensagens para conversa:', selectedConversationId);
-      
       // Resetar contadores quando mudar de conversa
-      previousMessageCountRef.current = 0;
       lastMessageIdRef.current = null;
+      previousMessageCountRef.current = 0;
       previousMessagesIdsStringRef.current = '';
-      
-      // Buscar mensagens da conversa
-      const loadMessages = async () => {
-        console.log('📥 [UnifiedChatInterface] Buscando mensagens para:', selectedConversationId);
-        try {
-          const result = await dispatch(fetchConversationMessages({ conversationId: selectedConversationId, limit: 50 }));
-          console.log('✅ [UnifiedChatInterface] Mensagens recebidas:', {
-            conversationId: selectedConversationId,
-            messageCount: result.payload?.messages?.length || 0,
-            messages: result.payload?.messages || [],
-          });
-        } catch (error) {
-          console.error('❌ [UnifiedChatInterface] Erro ao buscar mensagens:', error);
-        }
-      };
-      
-      // Carregar imediatamente
-      loadMessages();
       
       // Atualização automática das mensagens (polling a cada 3 segundos)
       const messageInterval = setInterval(() => {
-        loadMessages();
+        dispatch(fetchConversationMessages({ conversationId: selectedConversationId, limit: 50 }));
       }, 3000); // Atualizar a cada 3 segundos
       
       // Buscar inferência mais recente usando selectedConversation do useMemo
@@ -230,11 +198,10 @@ const UnifiedChatInterface: React.FC = () => {
       }
       
       return () => {
-        console.log('🧹 [UnifiedChatInterface] Limpando interval para:', selectedConversationId);
         clearInterval(messageInterval);
       };
     } else {
-      console.log('⚠️ [UnifiedChatInterface] Nenhuma conversa selecionada');
+      console.log('Nenhuma conversa selecionada');
     }
   }, [selectedConversationId, dispatch, selectedConversation]);
 
@@ -325,9 +292,9 @@ const UnifiedChatInterface: React.FC = () => {
         conversationId,
         message: {
           id: protocol.id,
+          source: protocol.source,
           content: messageContent,
           timestamp: new Date().toISOString(),
-          source: protocol.source,
         },
       })
     );
@@ -515,15 +482,6 @@ const UnifiedChatInterface: React.FC = () => {
               ref={messagesContainerRef}
               sx={{ flex: 1, overflow: 'auto', p: 2 }}
             >
-              {(() => {
-                console.log('🎨 [UnifiedChatInterface] Renderizando mensagens:', {
-                  selectedConversationId,
-                  currentMessagesLength: currentMessages?.length || 0,
-                  currentMessages: currentMessages,
-                  messagesByConversation: Object.keys(messagesByConversation),
-                });
-                return null;
-              })()}
               {!currentMessages || currentMessages.length === 0 ? (
                 <Box
                   sx={{
@@ -545,41 +503,13 @@ const UnifiedChatInterface: React.FC = () => {
                 </Box>
               ) : (
                 <Box>
-                  {currentMessages.map((message: Message, index: number) => {
-                    // Determinar se é mensagem do usuário baseado no source
-                    let isUser = false;
-                    let isManager = false;
-                    
-                    if (message.source === 'system') {
-                      isUser = false;
-                    } else if (message.source === 'manager') {
-                      isManager = true;
-                      isUser = true;
-                    } else if (message.source === 'websocket') {
-                      isUser = true;
-                    } else {
-                      // Fallback: inferir pela posição
-                      isUser = index % 2 === 0;
-                    }
-                    
-                    // Converter para formato Message do chatSlice
-                    const chatMessage: Message = {
-                      id: message.id,
-                      content: message.content || '',
-                      timestamp: message.timestamp,
-                      source: message.source || (isUser ? 'websocket' : 'system'),
-                      userId: isUser ? 'user' : (isManager ? 'manager' : undefined),
-                      type: 'text',
-                    };
-                    
-                    return (
+                  {currentMessages.map((message: Message) => (
                       <MessageWithInference
                         key={message.id}
-                        message={chatMessage}
-                        isUser={isUser || isManager}
+                        message={message}
+                        isUser={message.source === 'websocket'}
                       />
-                    );
-                  })}
+                    ))}
                   <div ref={messagesEndRef} />
                 </Box>
               )}
@@ -607,5 +537,5 @@ const UnifiedChatInterface: React.FC = () => {
   );
 };
 
-export default UnifiedChatInterface;
+export default History;
 
